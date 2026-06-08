@@ -8,7 +8,7 @@ Panduan ini ditujukan bagi operator Desa atau IT Administrator untuk melakukan m
 ## 🛠️ Persyaratan Sistem (System Requirements)
 1. **Web Server**: Apache, Nginx, or OpenLiteSpeed.
 2. **PHP Version**: PHP 7.4, 8.0, 8.1, atau 8.2 (Sangat direkomendasikan PHP 8.1+).
-3. **PDO Drivers**: `pdo_mysql` diaktifkan di setelan PHP server Anda.
+3. **PDO Drivers**: `pdo_mysql` diaktifkan di setelan PHP server Anda (Pada **CyberPanel**, ekstensi `pdo_mysql` sudah terinstal dan aktif secara default pada LSPHP, sehingga Anda tidak perlu melakukan pengaturan tambahan).
 4. **Basis Data**: MySQL v5.7+ atau MariaDB v10.3+.
 
 ---

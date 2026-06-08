@@ -1,43 +1,55 @@
 ### ----------------------------------------------------------------------
-### .htaccess - KONFIGURASI DEPLOYMENT CYBERPANEL & OPENLITESPEED
-### Aplikasi: SIPADES SMART (React Vite Frontend + Express Node.JS Backend)
+### .htaccess - KONFIGURASI DEPLOYMENT PHP & MYSQL (CYBERPANEL & OPENLITESPEED)
+### Aplikasi: SIPADES SMART (Desa Rarang Selatan) - Pure PHP & MySQL Edition
 ### ----------------------------------------------------------------------
-
-# ========================================================================
-# PILIHAN 1: JIKA RUNNING SEBAGAI FULLSTACK NODE.JS (REKOMENDASI)
-# Mengarahkan seluruh trafik publik domain ke port internal server Node.JS (Port 3000)
-# ========================================================================
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    
-    # 1. Pastikan koneksi HTTPS aman (SSL aktif)
-    # Jika SSL CyberPanel sudah terpasang, baris ini otomatis me-redirect HTTP ke HTTPS
+    RewriteBase /
+
+    # 1. Alihkan koneksi HTTP ke HTTPS secara otomatis (Menggunakan SSL Aktif)
     RewriteCond %{HTTPS} off
     RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-    # 2. Proxy Reverse ke port Node.js internal (3000)
-    # PM2 menjalankan 'dist/server.cjs' pada localhost:3000 secara background
-    # Aturan ini meneruskan endpoint Web & API ke server tersebut
-    RewriteCond %{REQUEST_URI} !^/\.well-known/cpanel-challenges [NC]
-    RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge [NC]
-    RewriteRule ^(.*)$ http://127.0.0.1:3000/$1 [P,L]
+    # 2. Rute Pencocokan Folder (Dual-Setup Compatibility)
+    # JIKA seluruh file PHP dibiarkan di dalam subfolder "/php" pada root hosting:
+    # Mengarahkan pengunjung dari halaman utama (/) langsung ke "/php/index.php" secara visual.
+    RewriteCond %{REQUEST_URI} ^/$
+    RewriteCond %{DOCUMENT_ROOT}/php/index.php -f
+    RewriteRule ^$ /php/index.php [L,R=301]
+
+    # 3. Rute "Pretty URLs" (Opsional / Estetika)
+    # Memungkinkan operator membuka halaman seperti 'domain.com/dashboard' tanpa mengetik '.php'.
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME}\.php -f
+    RewriteRule ^([^/]+)$ $1.php [L]
 </IfModule>
 
-
 # ========================================================================
-# PILIHAN 2: JIKA HANYA DEPLOY STATIC FRONTEND SAJA (EXPRESS DINONAKTIFKAN)
-# Aktifkan bagian ini jika Anda hanya ingin mendeploy client-side build statisnya saja.
-# Hapus tanda pagar (#) pada baris-baris dibawah ini jika menggunakan opsi ini.
+# PERLINDUNGAN KEAMANAN DIREKTORI DAN FILE SENSITIF
 # ========================================================================
 
-# <IfModule mod_rewrite.c>
-#     RewriteEngine On
-#     RewriteBase /
-#     
-#     # Redirect semua trafik non-eksistensi ke index.html untuk Single Page App (React Router)
-#     RewriteRule ^index\.html$ - [L]
-#     RewriteCond %{REQUEST_FILENAME} !-f
-#     RewriteCond %{REQUEST_FILENAME} !-d
-#     RewriteRule . /index.html [L]
-# # </IfModule>
+# Lindungi file konfigurasi sensitif agar tidak bisa diunduh langsung via URL browser
+<Files "config.php">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Deny from all
+    </IfModule>
+</Files>
+
+# Lindungi cadangan database mentah SQL
+<Files "database.sql">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Deny from all
+    </IfModule>
+</Files>
+
+# Mencegah Directory Browsing index (Meningkatkan privasi file inventaris desa)
+Options -Indexes

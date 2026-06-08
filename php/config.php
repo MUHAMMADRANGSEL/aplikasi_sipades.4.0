@@ -9,9 +9,9 @@
  * ==============================================================================
  */
 
-// Aktifkan reporting error untuk testing (sementara)
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// Nonaktifkan reporting error di server produksi agar tidak merusak tata letak visual (mencegah tulisan notice/warning yang tidak rapi)
+error_reporting(0);
+ini_set('display_errors', 0);
 
 // Memulai Session Keamanan Pengguna
 if (session_status() == PHP_SESSION_NONE) {

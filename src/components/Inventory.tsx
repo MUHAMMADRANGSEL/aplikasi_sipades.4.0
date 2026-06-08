@@ -24,6 +24,7 @@ interface InventoryProps {
   assets: Asset[];
   setAssets: (assets: Asset[]) => void;
   ruanganList: Ruangan[];
+  profilDesa?: { logo: string; namaDesa: string; kabupaten: string };
   onDbAction: (sheet: string, type: "INSERT" | "UPDATE" | "DELETE", data: any) => void;
 }
 
@@ -31,6 +32,7 @@ export default function Inventory({
   assets,
   setAssets,
   ruanganList,
+  profilDesa,
   onDbAction
 }: InventoryProps) {
   const [filterCat, setFilterCat] = useState<string>("All");
@@ -550,12 +552,12 @@ export default function Inventory({
               <div className="flex items-center justify-between border-b-2 border-slate-800 pb-2">
                 <div>
                   <h4 className="text-[10px] font-bold uppercase tracking-tight text-slate-800">ASET PEMERINTAH DESA</h4>
-                  <p className="text-[9px] font-bold text-teal-700 leading-none">DESA RARANG SELATAN</p>
+                  <p className="text-[9px] font-bold text-teal-700 leading-none">{profilDesa?.namaDesa ? profilDesa.namaDesa.toUpperCase() : "DESA RARANG SELATAN"}</p>
                 </div>
                 <img 
-                  src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Lambang_Dati_II_Lombok_Timur.png" 
-                  alt="Lombok Timur" 
-                  className="h-6 w-auto"
+                  src={profilDesa?.logo || "https://upload.wikimedia.org/wikipedia/commons/4/4e/Lambang_Dati_II_Lombok_Timur.png"}
+                  alt={profilDesa?.kabupaten || "Lombok Timur"} 
+                  className="h-6 w-auto object-contain"
                   referrerPolicy="no-referrer"
                 />
               </div>

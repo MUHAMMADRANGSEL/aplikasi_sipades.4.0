@@ -10,7 +10,7 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 
 // In-Memory Database store file (JSON format)
 const DB_FILE = path.join(process.cwd(), "database.json");
@@ -276,6 +276,48 @@ app.get("/api/audit", (req, res) => {
 app.post("/api/audit", (req, res) => {
   upsertItem("audit", req.body);
   return res.json({ success: true });
+});
+
+// 13. Export SQL Endpoint
+app.get("/api/export-sql", (req, res) => {
+  const sanitize = (val: any) => {
+    if (val === null || val === undefined) return "NULL";
+    if (typeof val === "number") return val;
+    if (typeof val === "boolean") return val ? "TRUE" : "FALSE";
+    // Escape single quotes for SQL
+    return `'${String(val).replace(/'/g, "''")}'`;
+  };
+
+  const generateInserts = (tableName: string, data: any[]) => {
+    if (!data || data.length === 0) return `-- No records for ${tableName}\n`;
+    const keys = Object.keys(data[0]);
+    const lines = data.map(item => {
+      const values = keys.map(k => sanitize(item[k])).join(", ");
+      return `INSERT INTO ${tableName} (${keys.join(", ")}) VALUES (${values});`;
+    });
+    return `-- Table: ${tableName}\n` + lines.join("\n") + "\n";
+  };
+
+  let sqlDump = `-- SIPADES Database Backup\n-- Generated on: ${new Date().toISOString()}\n\n`;
+
+  // Profile (single object)
+  if (dbState.profile) {
+    const keys = Object.keys(dbState.profile);
+    const values = keys.map(k => sanitize(dbState.profile[k])).join(", ");
+    sqlDump += `-- Table: profile\nINSERT INTO profile (${keys.join(", ")}) VALUES (${values});\n\n`;
+  }
+
+  // Iterate over array collections
+  const collections = ["users", "perangkat", "ruangan", "assets", "pengadaan", "penggunaan", "pemanfaatan", "kapitalisasi", "penghapusan", "persediaan", "audit"];
+  for (const coll of collections) {
+    if (dbState[coll]) {
+      sqlDump += generateInserts(coll, dbState[coll]) + "\n";
+    }
+  }
+
+  res.setHeader('Content-Type', 'application/sql');
+  res.setHeader('Content-Disposition', 'attachment; filename=sipades_backup.sql');
+  return res.send(sqlDump);
 });
 
 // ------------------------------------------------------------------------------

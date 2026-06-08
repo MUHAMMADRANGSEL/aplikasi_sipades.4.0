@@ -159,6 +159,8 @@ export default function App() {
   const setPersediaanList = createSyncArraySetter<Persediaan>(setPersediaanListLocal, "/api/persediaan");
   const setAuditList = createSyncArraySetter<Audit>(setAuditListLocal, "/api/audit");
 
+  const [initialLoading, setInitialLoading] = useState<boolean>(true);
+
   // Fetch all tables from SQL Database on component mount
   React.useEffect(() => {
     const fetchData = async () => {
@@ -186,6 +188,8 @@ export default function App() {
         ]);
       } catch (err) {
         console.error("Error loading SQL data into React state:", err);
+      } finally {
+        setTimeout(() => setInitialLoading(false), 1200);
       }
     };
     fetchData();
@@ -222,11 +226,15 @@ export default function App() {
       return;
     }
 
-    setCurrentUser(found);
-    setIsLoggedIn(true);
-    setLoginError("");
-    setInputUsername("");
-    setInputPassword("");
+    setInitialLoading(true);
+    setTimeout(() => {
+      setCurrentUser(found);
+      setIsLoggedIn(true);
+      setLoginError("");
+      setInputUsername("");
+      setInputPassword("");
+      setInitialLoading(false);
+    }, 600);
   };
 
   const handleQuickLogin = (uname: string) => {
@@ -350,6 +358,24 @@ export default function App() {
     }
   };
 
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4 antialiased selection:bg-emerald-100 selection:text-emerald-900 font-sans">
+        <div className="flex flex-col items-center justify-center space-y-6">
+          <div className="p-4 bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-emerald-500/5 transition-transform duration-500 animate-pulse">
+            <div className="w-16 h-16 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin"></div>
+          </div>
+          <div className="text-center space-y-1.5 flex flex-col items-center">
+            <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-widest block animate-pulse">Memuat Sistem</span>
+            <div className="h-1 w-12 bg-slate-200 rounded-full overflow-hidden">
+              <div className="h-full bg-emerald-500 w-1/2 animate-bounce rounded-full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col justify-between p-4 antialiased selection:bg-emerald-100 selection:text-emerald-900 font-sans">
@@ -360,8 +386,8 @@ export default function App() {
           {/* Header Branding (Lombok Timur & Sipades Core) */}
           <div className="text-center space-y-4">
             <div className="inline-flex items-center justify-center p-3.5 bg-emerald-50 rounded-2xl border border-emerald-100 shadow-sm transition-transform duration-300 hover:scale-105">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Lambang_Dati_II_Lombok_Timur.png" 
-                   alt="Logo Lombok Timur" className="h-14 object-contain" referrerPolicy="no-referrer" />
+              <img src={profileDesa.logo} 
+                   alt="Logo Desa" className="h-14 object-contain" referrerPolicy="no-referrer" />
             </div>
             <div className="space-y-1">
               <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-widest block">PEMERINTAH DESA RARANG SELATAN</span>
@@ -638,6 +664,7 @@ export default function App() {
               assets={assets} 
               setAssets={setAssets} 
               ruanganList={ruanganList}
+              profilDesa={profileDesa}
               onDbAction={registerSyncAction}
             />
           )}

@@ -10,7 +10,8 @@ import {
   Trash2, 
   Save, 
   Lock,
-  UserPlus
+  UserPlus,
+  Download
 } from "lucide-react";
 
 interface MasterDataProps {
@@ -130,7 +131,7 @@ export default function MasterData({
   return (
     <div className="space-y-6">
       {/* Sub tabs navigation */}
-      <div className="border-b border-slate-200">
+      <div className="border-b border-slate-200 flex items-center justify-between">
         <nav className="flex space-x-6" aria-label="Tabs">
           {[
             { id: "profil", label: "Profil Desa", icon: Building },
@@ -155,6 +156,18 @@ export default function MasterData({
             );
           })}
         </nav>
+        
+        {/* Export Backup Action */}
+        <div className="pb-1">
+          <a
+            href="/api/export-sql"
+            download="sipades_backup.sql"
+            className="flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 px-4 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+            title="Unduh Backup Database"
+          >
+            <Download className="h-4 w-4" /> Export Database (SQL)
+          </a>
+        </div>
       </div>
 
       {/* Profile Section */}
@@ -241,13 +254,23 @@ export default function MasterData({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-500 mb-1">URL Logo (PNG / JPG)</label>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">Upload Logo Baru (Opsional)</label>
                     <input
-                      type="text"
-                      value={prefForm.logo}
-                      onChange={e => setPrefForm({ ...prefForm, logo: e.target.value })}
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+                      type="file"
+                      accept="image/*"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setPrefForm({ ...prefForm, logo: reader.result as string });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
                     />
+                    <div className="mt-2 text-[10px] text-slate-400">Pilih gambar untuk mengganti logo. Kosongkan jika tidak ingin mengubah.</div>
                   </div>
                 </div>
 

@@ -1,0 +1,43 @@
+### ----------------------------------------------------------------------
+### .htaccess - KONFIGURASI DEPLOYMENT CYBERPANEL & OPENLITESPEED
+### Aplikasi: SIPADES SMART (React Vite Frontend + Express Node.JS Backend)
+### ----------------------------------------------------------------------
+
+# ========================================================================
+# PILIHAN 1: JIKA RUNNING SEBAGAI FULLSTACK NODE.JS (REKOMENDASI)
+# Mengarahkan seluruh trafik publik domain ke port internal server Node.JS (Port 3000)
+# ========================================================================
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # 1. Pastikan koneksi HTTPS aman (SSL aktif)
+    # Jika SSL CyberPanel sudah terpasang, baris ini otomatis me-redirect HTTP ke HTTPS
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # 2. Proxy Reverse ke port Node.js internal (3000)
+    # PM2 menjalankan 'dist/server.cjs' pada localhost:3000 secara background
+    # Aturan ini meneruskan endpoint Web & API ke server tersebut
+    RewriteCond %{REQUEST_URI} !^/\.well-known/cpanel-challenges [NC]
+    RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge [NC]
+    RewriteRule ^(.*)$ http://127.0.0.1:3000/$1 [P,L]
+</IfModule>
+
+
+# ========================================================================
+# PILIHAN 2: JIKA HANYA DEPLOY STATIC FRONTEND SAJA (EXPRESS DINONAKTIFKAN)
+# Aktifkan bagian ini jika Anda hanya ingin mendeploy client-side build statisnya saja.
+# Hapus tanda pagar (#) pada baris-baris dibawah ini jika menggunakan opsi ini.
+# ========================================================================
+
+# <IfModule mod_rewrite.c>
+#     RewriteEngine On
+#     RewriteBase /
+#     
+#     # Redirect semua trafik non-eksistensi ke index.html untuk Single Page App (React Router)
+#     RewriteRule ^index\.html$ - [L]
+#     RewriteCond %{REQUEST_FILENAME} !-f
+#     RewriteCond %{REQUEST_FILENAME} !-d
+#     RewriteRule . /index.html [L]
+# # </IfModule>

@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -257,6 +258,10 @@ app.post("/api/assets", async (req, res) => {
         longitude: data.longitude || null,
       }
     });
+    
+    // Live synchronization with Supabase
+    triggerSupabaseSync("assets", "INSERT", data);
+
     return res.json({ success: true });
   } catch (error: any) {
     console.error("SQL Error on POST /api/assets:", error);
@@ -267,6 +272,10 @@ app.post("/api/assets", async (req, res) => {
 app.delete("/api/assets/:id", async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Live synchronization with Supabase
+    triggerSupabaseSync("assets", "DELETE", { id });
+
     await db.delete(assets).where(eq(assets.id, id));
     return res.json({ success: true });
   } catch (error: any) {
@@ -318,6 +327,10 @@ app.post("/api/pengadaan", async (req, res) => {
         status: data.status,
       }
     });
+
+    // Live synchronization with Supabase
+    triggerSupabaseSync("pengadaan", "INSERT", data);
+
     return res.json({ success: true });
   } catch (error: any) {
     console.error("SQL Error on POST /api/pengadaan:", error);
@@ -528,6 +541,10 @@ app.post("/api/persediaan", async (req, res) => {
         keterangan: data.keterangan || null,
       }
     });
+
+    // Live synchronization with Supabase
+    triggerSupabaseSync("persediaan", "INSERT", data);
+
     return res.json({ success: true });
   } catch (error: any) {
     console.error("SQL Error on POST /api/persediaan:", error);
@@ -570,6 +587,10 @@ app.post("/api/audit", async (req, res) => {
         foto: data.foto || null,
       }
     });
+
+    // Live synchronization with Supabase
+    triggerSupabaseSync("audit", "INSERT", data);
+
     return res.json({ success: true });
   } catch (error: any) {
     console.error("SQL Error on POST /api/audit:", error);
@@ -744,6 +765,220 @@ Berikan output berupa rekomendasi optimasi umur, prediksi sisa umur ekonomis, pe
         ]
       }
     });
+  }
+});
+
+// ------------------------------------------------------------------------------
+// SUPABASE DATABASE SYNC & BACKUP CONFIGURATION & ENDPOINTS
+// ------------------------------------------------------------------------------
+const SUPABASE_CONFIG_PATH = path.join(process.cwd(), "supabase_config.json");
+
+function getSupabaseConfig() {
+  if (fs.existsSync(SUPABASE_CONFIG_PATH)) {
+    try {
+      return JSON.parse(fs.readFileSync(SUPABASE_CONFIG_PATH, "utf-8"));
+    } catch {
+      // safe fallback on parse errors
+    }
+  }
+  return { supabaseUrl: "", supabaseKey: "", liveSyncEnabled: false };
+}
+
+function saveSupabaseConfig(config: any) {
+  try {
+    fs.writeFileSync(SUPABASE_CONFIG_PATH, JSON.stringify(config, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Gagal menyimpan file konfigurasi Supabase:", err);
+  }
+}
+
+// Live synchronization with Supabase PostgREST REST API
+async function triggerSupabaseSync(tableName: string, actionType: "INSERT" | "UPDATE" | "DELETE", payload: any) {
+  try {
+    const config = getSupabaseConfig();
+    if (!config.liveSyncEnabled || !config.supabaseUrl || !config.supabaseKey) return;
+
+    // Clean up trailing slash
+    const baseUrl = config.supabaseUrl.replace(/\/$/, "");
+    const url = `${baseUrl}/rest/v1/${tableName}`;
+    
+    const headers: Record<string, string> = {
+      "apikey": config.supabaseKey,
+      "Authorization": `Bearer ${config.supabaseKey}`,
+      "Content-Type": "application/json",
+      "Prefer": "resolution=merge-duplicates" // Tells Supabase to upsert on conflict
+    };
+
+    if (actionType === "INSERT" || actionType === "UPDATE") {
+      const payloadArray = Array.isArray(payload) ? payload : [payload];
+      
+      fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payloadArray)
+      }).then(async (res) => {
+        const text = await res.text();
+        console.log(`[Supabase Sync] ${tableName} ${actionType}: Status ${res.status}`, text);
+      }).catch(err => {
+        console.error(`[Supabase Sync Error] Failed to execute ${actionType} connection:`, err);
+      });
+    } else if (actionType === "DELETE") {
+      fetch(`${url}?id=eq.${payload.id}`, {
+        method: "DELETE",
+        headers
+      }).then(async (res) => {
+        const text = await res.text();
+        console.log(`[Supabase Sync] ${tableName} DELETE: Status ${res.status}`, text);
+      }).catch(err => {
+        console.error(`[Supabase Sync Error] Failed to execute DELETE:`, err);
+      });
+    }
+  } catch (err) {
+    console.error("[Supabase Live Sync Error]:", err);
+  }
+}
+
+// REST API endpoint to pull Supabase settings
+app.get("/api/supabase/config", (req, res) => {
+  try {
+    return res.json(getSupabaseConfig());
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// REST API endpoint to save Supabase settings
+app.post("/api/supabase/config", (req, res) => {
+  try {
+    const config = req.body;
+    const nextConfig = {
+      supabaseUrl: config.supabaseUrl || "",
+      supabaseKey: config.supabaseKey || "",
+      liveSyncEnabled: !!config.liveSyncEnabled
+    };
+    saveSupabaseConfig(nextConfig);
+    return res.json({ success: true, config: nextConfig });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Test Supabase REST API connection
+app.post("/api/supabase/test", async (req, res) => {
+  try {
+    const { supabaseUrl, supabaseKey } = req.body;
+    if (!supabaseUrl || !supabaseKey) {
+      return res.status(400).json({ error: "Supabase Project URL dan Anon/Service-Role Key diperlukan." });
+    }
+
+    const baseUrl = supabaseUrl.replace(/\/$/, "");
+    const response = await fetch(`${baseUrl}/rest/v1/`, {
+      method: "GET",
+      headers: {
+        "apikey": supabaseKey,
+        "Authorization": `Bearer ${supabaseKey}`
+      }
+    });
+
+    if (response.ok) {
+      return res.json({ 
+        success: true, 
+        message: "Koneksi berhasil terhubung secara langsung ke REST API Supabase! Akses terverifikasi aman." 
+      });
+    } else {
+      const text = await response.text();
+      return res.json({ 
+        success: false, 
+        message: `Supabase menolak koneksi (Status: ${response.status}). Periksa URL atau API Key Anda.`,
+        error: text
+      });
+    }
+  } catch (err: any) {
+    console.error("Test connection to Supabase failed:", err);
+    return res.status(500).json({ success: false, error: err.message || "Gagal menghubungi server Supabase." });
+  }
+});
+
+// Sync and Push All tables endpoint (Full Backup to Supabase)
+app.post("/api/supabase/sync-all", async (req, res) => {
+  try {
+    const config = getSupabaseConfig();
+    if (!config.supabaseUrl || !config.supabaseKey) {
+      return res.status(400).json({ error: "Supabase Project URL dan API Key belum dikonfigurasi di pengaturan database." });
+    }
+
+    // Load active records from local DB
+    const listProfil = await db.select().from(profilDesa);
+    const listUsers = await db.select().from(users);
+    const listPerangkat = await db.select().from(perangkatDesa);
+    const listRuangan = await db.select().from(ruangan);
+    const listAssets = await db.select().from(assets);
+    const listPengadaan = await db.select().from(pengadaan);
+    const listPenggunaan = await db.select().from(penggunaan);
+    const listPemanfaatan = await db.select().from(pemanfaatan);
+    const listKapitalisasi = await db.select().from(kapitalisasi);
+    const listPenghapusan = await db.select().from(penghapusan);
+    const listPersediaan = await db.select().from(persediaan);
+    const listAudit = await db.select().from(audit);
+
+    const tablesToPush = [
+      { name: "profil_desa", data: listProfil },
+      { name: "users", data: listUsers },
+      { name: "perangkat_desa", data: listPerangkat },
+      { name: "ruangan", data: listRuangan },
+      { name: "assets", data: listAssets },
+      { name: "pengadaan", data: listPengadaan },
+      { name: "penggunaan", data: listPenggunaan },
+      { name: "pemanfaatan", data: listPemanfaatan },
+      { name: "kapitalisasi", data: listKapitalisasi },
+      { name: "penghapusan", data: listPenghapusan },
+      { name: "persediaan", data: listPersediaan },
+      { name: "audit", data: listAudit },
+    ];
+
+    const baseUrl = config.supabaseUrl.replace(/\/$/, "");
+    const syncResults = [];
+
+    for (const table of tablesToPush) {
+      try {
+        const url = `${baseUrl}/rest/v1/${table.name}`;
+        
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "apikey": config.supabaseKey,
+            "Authorization": `Bearer ${config.supabaseKey}`,
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates"
+          },
+          body: JSON.stringify(table.data)
+        });
+
+        const resText = await response.text();
+        const success = response.status === 201 || response.status === 200 || response.status === 204;
+
+        syncResults.push({
+          table: table.name.toUpperCase(),
+          success: success,
+          message: success ? "Tersinkron (Upsert)" : `Gagal: ${response.status}`,
+          count: table.data.length,
+          error: success ? undefined : resText
+        });
+      } catch (err: any) {
+        console.error(`Error syncing table ${table.name} to Supabase:`, err);
+        syncResults.push({
+          table: table.name.toUpperCase(),
+          success: false,
+          error: err.message || String(err),
+          count: table.data.length
+        });
+      }
+    }
+
+    return res.json({ success: true, results: syncResults });
+  } catch (error: any) {
+    console.error("Supabase full sync backup error:", error);
+    return res.status(500).json({ error: error.message || "Gagal mengekspor data database ke Supabase." });
   }
 });
 

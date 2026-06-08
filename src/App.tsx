@@ -390,7 +390,7 @@ export default function App() {
               { id: "scanner", label: "Fisik Scan / Audit", icon: Compass, roles: ["Administrator", "Operator Desa", "Auditor"] },
               { id: "reports", label: "Pencetakan / Laporan", icon: Printer, roles: ["Administrator", "Operator Desa", "Kepala Desa", "Auditor"] },
               { id: "premium", label: "Saran Revaluasi AI", icon: Sparkles, roles: ["Administrator", "Operator Desa", "Kepala Desa", "Auditor"] },
-              { id: "sync", label: "Apps Script Sync", icon: FolderSync, roles: ["Administrator"] }
+              { id: "sync", label: "Supabase Cloud Sync", icon: Database, roles: ["Administrator"] }
             ].map(tab => {
               // check authorization based on array of allowed roles
               if (tab.roles && !tab.roles.includes(currentUser.role)) return null;

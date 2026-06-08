@@ -29,6 +29,7 @@ $logo_desa = $profil_desa['logo'] ?: 'https://upload.wikimedia.org/wikipedia/com
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
+        .sidebar-gradient { background: linear-gradient(180deg, #1E3A8A 0%, #172554 100%); border-right: 1px solid rgba(30,58,138,0.2); }
     </style>
 </head>
 <body class="bg-[#f8fafc] text-slate-800 min-h-screen flex flex-col md:flex-row antialiased">
@@ -48,10 +49,10 @@ $logo_desa = $profil_desa['logo'] ?: 'https://upload.wikimedia.org/wikipedia/com
     </div>
 
     <!-- MAIN SIDEBAR NAVIGATION -->
-    <aside id="sidebar" class="hidden md:flex w-full md:w-64 bg-slate-900 border-r border-slate-800 flex-col text-slate-300 select-none shrink-0 shrink-0">
+    <aside id="sidebar" class="hidden md:flex w-full md:w-64 sidebar-gradient flex-col text-white select-none shrink-0 shadow-lg">
         
         <!-- Sidebar Brand logo -->
-        <div class="p-6 border-b border-slate-800 flex items-center gap-3">
+        <div class="p-6 border-b border-white/10 flex items-center gap-3">
             <img src="<?php echo htmlspecialchars($logo_desa); ?>" alt="Logo Desa" class="h-10 object-contain max-w-[40px]">
             <div>
                 <span class="text-[9px] font-black text-emerald-400 uppercase tracking-widest block font-mono">SIPADES SMART v4.5</span>
@@ -64,61 +65,76 @@ $logo_desa = $profil_desa['logo'] ?: 'https://upload.wikimedia.org/wikipedia/com
         </div>
 
         <!-- Logged-in User Profile -->
-        <div class="p-4 bg-slate-950/40 border-b border-slate-800/80 flex items-center gap-3">
+        <div class="p-4 bg-black/20 border-b border-white/5 flex items-center gap-3">
             <div class="h-9 w-9 bg-emerald-50/10 rounded-full flex items-center justify-center text-emerald-400 font-extrabold text-xs">
                 <?php echo strtoupper(substr($_SESSION['user_nama'], 0, 2)); ?>
             </div>
             <div class="overflow-hidden">
                 <span class="block text-xs font-bold text-white truncate"><?php echo htmlspecialchars($_SESSION['user_nama']); ?></span>
-                <span class="block text-[10px] text-emerald-400 font-bold font-mono tracking-wider truncate uppercase"><?php echo htmlspecialchars($_SESSION['user_role']); ?></span>
+                <span class="block text-[10px] text-blue-300 font-bold font-mono tracking-wider truncate uppercase"><?php echo htmlspecialchars($_SESSION['user_role']); ?></span>
             </div>
         </div>
 
         <!-- Navigation Lists -->
         <nav class="flex-1 p-4 space-y-1.5 overflow-y-auto">
             
-            <a href="dashboard.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='dashboard.php') ? 'bg-emerald-600 text-white font-black hover:bg-emerald-700' : 'text-slate-400 hover:bg-slate-800 hover:text-white'; ?>">
+            <a href="dashboard.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='dashboard.php') ? 'bg-white/10 text-white border-l-4 border-teal-400 font-extrabold shadow-sm' : 'text-blue-200 hover:bg-white/5 hover:text-white'; ?>">
                 <i data-lucide="layout-dashboard" class="h-4 w-4"></i> Dashboard Utama
             </a>
 
-            <div class="pt-2">
-                <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest px-3 block">Modul Inventaris & Buku KIB</span>
-            </div>
-
-            <a href="assets.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='assets.php') ? 'bg-emerald-600 text-white font-black hover:bg-emerald-700' : 'text-slate-400 hover:bg-slate-800 hover:text-white'; ?>">
-                <i data-lucide="database" class="h-4 w-4"></i> Inventaris KIB (A - F)
+            <a href="profil.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='profil.php') ? 'bg-white/10 text-white border-l-4 border-teal-400 font-extrabold shadow-sm' : 'text-blue-200 hover:bg-white/5 hover:text-white'; ?>">
+                <i data-lucide="building-2" class="h-4 w-4"></i> Mnj. Basis Data
             </a>
 
-            <a href="pengadaan.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='pengadaan.php') ? 'bg-emerald-600 text-white font-black hover:bg-emerald-700' : 'text-slate-400 hover:bg-slate-800 hover:text-white'; ?>">
-                <i data-lucide="shopping-cart" class="h-4 w-4"></i> Procurement APBDes
+            <a href="pengadaan.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='pengadaan.php') ? 'bg-white/10 text-white border-l-4 border-teal-400 font-extrabold shadow-sm' : 'text-blue-200 hover:bg-white/5 hover:text-white'; ?>">
+                <i data-lucide="plus-square" class="h-4 w-4"></i> Belanja & Pengadaan
             </a>
 
-            <a href="persediaan.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='persediaan.php') ? 'bg-emerald-600 text-white font-black hover:bg-emerald-700' : 'text-slate-400 hover:bg-slate-800 hover:text-white'; ?>">
-                <i data-lucide="package" class="h-4 w-4"></i> Logistik Persediaan
+            <a href="assets.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='assets.php') ? 'bg-white/10 text-white border-l-4 border-teal-400 font-extrabold shadow-sm' : 'text-blue-200 hover:bg-white/5 hover:text-white'; ?>">
+                <i data-lucide="database" class="h-4 w-4"></i> Inventaris KIB
             </a>
 
-            <a href="audit.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='audit.php') ? 'bg-emerald-600 text-white font-black hover:bg-emerald-700' : 'text-slate-400 hover:bg-slate-800 hover:text-white'; ?>">
-                <i data-lucide="camera" class="h-4 w-4"></i> Scanner & Audit Lapangan
+            <a href="#" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition text-blue-200 hover:bg-white/5 hover:text-white">
+                <i data-lucide="file-check" class="h-4 w-4"></i> Hak Guna & Leases
             </a>
 
-            <div class="pt-2">
-                <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest px-3 block">Sistem & Rekap</span>
-            </div>
-
-            <a href="profil.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='profil.php') ? 'bg-emerald-600 text-white font-black hover:bg-emerald-700' : 'text-slate-400 hover:bg-slate-800 hover:text-white'; ?>">
-                <i data-lucide="home" class="h-4 w-4"></i> Profil & Perangkat Desa
+            <a href="#" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition text-blue-200 hover:bg-white/5 hover:text-white">
+                <i data-lucide="trending-down" class="h-4 w-4"></i> Kapitalisasi
             </a>
 
-            <a href="logout.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition text-rose-400 hover:bg-rose-950/40 hover:text-rose-300">
-                <i data-lucide="log-out" class="h-4 w-4"></i> Keluar Aplikasi
+            <a href="persediaan.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='persediaan.php') ? 'bg-white/10 text-white border-l-4 border-teal-400 font-extrabold shadow-sm' : 'text-blue-200 hover:bg-white/5 hover:text-white'; ?>">
+                <i data-lucide="warehouse" class="h-4 w-4"></i> Persediaan Desa
             </a>
 
+            <a href="#" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition text-blue-200 hover:bg-white/5 hover:text-white">
+                <i data-lucide="book-open" class="h-4 w-4"></i> Ref Kode Barang
+            </a>
+
+            <a href="#" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition text-blue-200 hover:bg-white/5 hover:text-white">
+                <i data-lucide="map-pin" class="h-4 w-4"></i> Peta GIS Aset
+            </a>
+
+            <a href="audit.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='audit.php') ? 'bg-white/10 text-white border-l-4 border-teal-400 font-extrabold shadow-sm' : 'text-blue-200 hover:bg-white/5 hover:text-white'; ?>">
+                <i data-lucide="compass" class="h-4 w-4"></i> Fisik Scan / Audit
+            </a>
+
+            <a href="#" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition text-blue-200 hover:bg-white/5 hover:text-white">
+                <i data-lucide="printer" class="h-4 w-4"></i> Pencetakan
+            </a>
+
+            <a href="#" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition text-blue-200 hover:bg-white/5 hover:text-white">
+                <i data-lucide="sparkles" class="h-4 w-4"></i> Revaluasi AI
+            </a>
         </nav>
 
         <!-- Sidebar footer watermark -->
-        <div class="p-4 border-t border-slate-800 text-[9px] text-slate-500 text-center font-mono leading-relaxed">
-            Pemerintah Kab. Lombok Timur<br>
-            NTB, Indonesia
+        <div class="p-4 border-t border-white/10 flex justify-between items-center bg-black/10">
+            <div class="text-[9px] text-blue-200 text-center font-mono leading-relaxed truncate">
+                Kab. Lombok Timur
+            </div>
+            <a href="logout.php" title="Keluar Aplikasi" class="p-1.5 text-rose-300 hover:bg-rose-500/20 hover:text-rose-100 rounded transition-colors">
+                <i data-lucide="log-out" class="h-4 w-4"></i>
+            </a>
         </div>
     </aside>
 

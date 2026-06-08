@@ -5,31 +5,117 @@ import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Import DB modules explicitly with file extensions
-import { db } from "./src/db/index.ts";
-import { seedDatabase } from "./src/db/seed.ts";
-import { 
-  users, 
-  profilDesa, 
-  perangkatDesa, 
-  ruangan, 
-  assets, 
-  pengadaan, 
-  penggunaan, 
-  pemanfaatan, 
-  kapitalisasi, 
-  penghapusan, 
-  persediaan, 
-  audit
-} from "./src/db/schema.ts";
-import { eq } from "drizzle-orm";
-
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+// In-Memory Database store file (JSON format)
+const DB_FILE = path.join(process.cwd(), "database.json");
+
+// Import default seed lists directly from Typescript representation to avoid empty starts
+import {
+  initialProfilDesa,
+  initialUsers,
+  initialPerangkatDesa,
+  initialRuangan,
+  initialAssets,
+} from "./src/types.ts";
+
+let dbState: any = {
+  profile: initialProfilDesa,
+  users: initialUsers,
+  perangkat: initialPerangkatDesa,
+  ruangan: initialRuangan,
+  assets: initialAssets,
+  pengadaan: [
+    {
+      id: "PRC-01",
+      tanggal: "2026-03-10",
+      kegiatan: "Pembangunan Rabat Beton Jalan Lingkungan Dusun II",
+      sumber_dana: "DDS",
+      kode_rekening: "2.01.01",
+      barang: "Semen Portland, Pasir, Batu Pecah",
+      volume: 1,
+      harga: 42500000,
+      total: 42500000,
+      lokasi: "Dusun II Rarang",
+      status: "Terposting"
+    },
+    {
+      id: "PRC-02",
+      tanggal: "2026-05-18",
+      kegiatan: "Pengadaan Laptop Sekretariat BPD Rarang Selatan",
+      sumber_dana: "ADD",
+      kode_rekening: "1.02.04",
+      barang: "2 Unit Laptop ASUS Core i5",
+      volume: 2,
+      harga: 8500000,
+      total: 17000000,
+      lokasi: "Kantor BPD Desa Rarang",
+      status: "Draf"
+    }
+  ],
+  penggunaan: [],
+  pemanfaatan: [],
+  kapitalisasi: [],
+  penghapusan: [],
+  persediaan: [
+    {
+      id: "INV-01",
+      tanggal: "2026-06-01",
+      nama_barang: "Kertas HVS A4 80gr - Sekretariat",
+      tipe: "Masuk",
+      jumlah: 100,
+      stok_sisa: 100,
+      keterangan: "Pengadaan triwulan II kaur umum"
+    },
+    {
+      id: "INV-02",
+      tanggal: "2026-06-05",
+      nama_barang: "Kertas HVS A4 80gr - Sekretariat",
+      tipe: "Keluar",
+      jumlah: 15,
+      penerima: "Kasi Pemerintahan",
+      stok_sisa: 85,
+      keterangan: "Cetak blanko administrasi kependudukan"
+    }
+  ],
+  audit: [
+    {
+      id: "ADT-01",
+      tanggal: "2026-06-02",
+      barang_id: "AST-03",
+      nama_barang: "Gedung Kantor Desa (Gedung Utama)",
+      kondisi: "Baik",
+      auditor: "Drs. Hermawan",
+      catatan: "Visualisasi detail struktur aman, cat eksterior sedikit pudar."
+    }
+  ]
+};
+
+// Initialize or load DB_FILE
+if (fs.existsSync(DB_FILE)) {
+  try {
+    const rawData = fs.readFileSync(DB_FILE, "utf-8");
+    const parsed = JSON.parse(rawData);
+    dbState = { ...dbState, ...parsed };
+  } catch (err) {
+    console.error("Gagal membaca database.json, menggunakan data cache awal.", err);
+  }
+} else {
+  saveDbState();
+}
+
+function saveDbState() {
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(dbState, null, 2), "utf-8");
+  } catch (err) {
+    console.error("Gagal menyimpan database.json ke disk:", err);
+  }
+}
 
 // Initialize Gemini Client safely
 let ai: GoogleGenAI | null = null;
@@ -44,558 +130,152 @@ if (process.env.GEMINI_API_KEY) {
   });
 }
 
-// Ensure database has initial seed data
-async function initDb() {
-  try {
-    await seedDatabase();
-  } catch (error) {
-    console.error("Failed to seed database during startup:", error);
+// Helper generic upsert
+function upsertItem(arrayName: string, item: any) {
+  if (!dbState[arrayName]) {
+    dbState[arrayName] = [];
   }
+  const idx = dbState[arrayName].findIndex((x: any) => x.id === item.id);
+  if (idx > -1) {
+    dbState[arrayName][idx] = { ...dbState[arrayName][idx], ...item };
+  } else {
+    dbState[arrayName].push(item);
+  }
+  saveDbState();
 }
-initDb();
 
 // ------------------------------------------------------------------------------
-// DATABASE REST API ENDPOINTS (SQL AS DATA SOURCE)
+// DATABASE REST API ENDPOINTS
 // ------------------------------------------------------------------------------
 
 // 1. Profil Desa Endpoints
-app.get("/api/profile", async (req, res) => {
-  try {
-    const list = await db.select().from(profilDesa);
-    if (list.length === 0) {
-      return res.status(404).json({ error: "Profile not found" });
-    }
-    return res.json(list[0]);
-  } catch (error: any) {
-    console.error("SQL Error in /api/profile:", error);
-    return res.status(500).json({ error: "Failed to fetch profil desa" });
-  }
+app.get("/api/profile", (req, res) => {
+  return res.json(dbState.profile);
 });
 
-app.post("/api/profile", async (req, res) => {
-  try {
-    const data = req.body;
-    await db.insert(profilDesa).values({
-      kodeDesa: data.kodeDesa,
-      namaDesa: data.namaDesa,
-      kecamatan: data.kecamatan,
-      kabupaten: data.kabupaten,
-      provinsi: data.provinsi,
-      logo: data.logo,
-    }).onConflictDoUpdate({
-      target: profilDesa.kodeDesa,
-      set: {
-        namaDesa: data.namaDesa,
-        kecamatan: data.kecamatan,
-        kabupaten: data.kabupaten,
-        provinsi: data.provinsi,
-        logo: data.logo,
-      }
-    });
-    return res.json({ success: true });
-  } catch (error: any) {
-    console.error("SQL Error on POST /api/profile:", error);
-    return res.status(500).json({ error: "Failed to update profile" });
-  }
+app.post("/api/profile", (req, res) => {
+  dbState.profile = { ...dbState.profile, ...req.body };
+  saveDbState();
+  return res.json({ success: true });
 });
 
 // 2. Users Endpoints
-app.get("/api/users", async (req, res) => {
-  try {
-    const list = await db.select().from(users);
-    return res.json(list);
-  } catch (error: any) {
-    console.error("SQL Error in /api/users:", error);
-    return res.status(500).json({ error: "Failed to fetch users" });
-  }
+app.get("/api/users", (req, res) => {
+  return res.json(dbState.users || []);
 });
 
-app.post("/api/users", async (req, res) => {
-  try {
-    const data = req.body;
-    await db.insert(users).values({
-      id: data.id,
-      nama: data.nama,
-      username: data.username,
-      role: data.role,
-      status: data.status,
-    }).onConflictDoUpdate({
-      target: users.id,
-      set: {
-        nama: data.nama,
-        username: data.username,
-        role: data.role,
-        status: data.status,
-      }
-    });
-    return res.json({ success: true });
-  } catch (error: any) {
-    console.error("SQL Error on POST /api/users:", error);
-    return res.status(500).json({ error: "Failed to update user" });
-  }
+app.post("/api/users", (req, res) => {
+  upsertItem("users", req.body);
+  return res.json({ success: true });
 });
 
 // 3. Perangkat Desa Endpoints
-app.get("/api/perangkat", async (req, res) => {
-  try {
-    const list = await db.select().from(perangkatDesa);
-    return res.json(list);
-  } catch (error: any) {
-    console.error("SQL Error in /api/perangkat:", error);
-    return res.status(500).json({ error: "Failed to fetch perangkat desa" });
-  }
+app.get("/api/perangkat", (req, res) => {
+  return res.json(dbState.perangkat || []);
 });
 
-app.post("/api/perangkat", async (req, res) => {
-  try {
-    const data = req.body;
-    await db.insert(perangkatDesa).values({
-      id: data.id,
-      nama: data.nama,
-      jabatan: data.jabatan,
-      nip: data.nip,
-      status: data.status,
-    }).onConflictDoUpdate({
-      target: perangkatDesa.id,
-      set: {
-        nama: data.nama,
-        jabatan: data.jabatan,
-        nip: data.nip,
-        status: data.status,
-      }
-    });
-    return res.json({ success: true });
-  } catch (error: any) {
-    console.error("SQL Error on POST /api/perangkat:", error);
-    return res.status(500).json({ error: "Failed to save perangkat desa" });
-  }
+app.post("/api/perangkat", (req, res) => {
+  upsertItem("perangkat", req.body);
+  return res.json({ success: true });
 });
 
 // 4. Ruangan Endpoints
-app.get("/api/ruangan", async (req, res) => {
-  try {
-    const list = await db.select().from(ruangan);
-    return res.json(list);
-  } catch (error: any) {
-    console.error("SQL Error in /api/ruangan:", error);
-    return res.status(500).json({ error: "Failed to fetch ruangan" });
-  }
+app.get("/api/ruangan", (req, res) => {
+  return res.json(dbState.ruangan || []);
 });
 
-app.post("/api/ruangan", async (req, res) => {
-  try {
-    const data = req.body;
-    await db.insert(ruangan).values({
-      id: data.id,
-      namaRuangan: data.namaRuangan,
-      lokasi: data.lokasi,
-      penanggungJawab: data.penanggungJawab,
-    }).onConflictDoUpdate({
-      target: ruangan.id,
-      set: {
-        namaRuangan: data.namaRuangan,
-        lokasi: data.lokasi,
-        penanggungJawab: data.penanggungJawab,
-      }
-    });
-    return res.json({ success: true });
-  } catch (error: any) {
-    console.error("SQL Error on POST /api/ruangan:", error);
-    return res.status(500).json({ error: "Failed to save ruangan" });
-  }
+app.post("/api/ruangan", (req, res) => {
+  upsertItem("ruangan", req.body);
+  return res.json({ success: true });
 });
 
 // 5. Assets Endpoints (KIB A - F)
-app.get("/api/assets", async (req, res) => {
-  try {
-    const list = await db.select().from(assets);
-    return res.json(list);
-  } catch (error: any) {
-    console.error("SQL Error or lookup failed for /api/assets:", error);
-    return res.status(500).json({ error: "Database lookup failed. Please try again later." });
-  }
+app.get("/api/assets", (req, res) => {
+  return res.json(dbState.assets || []);
 });
 
-app.post("/api/assets", async (req, res) => {
-  try {
-    const data = req.body;
-    await db.insert(assets).values({
-      id: data.id,
-      kategori: data.kategori,
-      kode_barang: data.kode_barang,
-      nama_barang: data.nama_barang,
-      luas: data.luas || null,
-      sertifikat: data.sertifikat || null,
-      merk: data.merk || null,
-      tahun: data.tahun,
-      nilai: Number(data.nilai || 0),
-      lokasi: data.lokasi,
-      kondisi: data.kondisi || "Baik",
-      panjang: data.panjang || null,
-      progress: data.progress || null,
-      keterangan: data.keterangan || null,
-      foto: data.foto || null,
-      latitude: data.latitude || null,
-      longitude: data.longitude || null,
-    }).onConflictDoUpdate({
-      target: assets.id,
-      set: {
-        kategori: data.kategori,
-        kode_barang: data.kode_barang,
-        nama_barang: data.nama_barang,
-        luas: data.luas || null,
-        sertifikat: data.sertifikat || null,
-        merk: data.merk || null,
-        tahun: data.tahun,
-        nilai: Number(data.nilai || 0),
-        lokasi: data.lokasi,
-        kondisi: data.kondisi || "Baik",
-        panjang: data.panjang || null,
-        progress: data.progress || null,
-        keterangan: data.keterangan || null,
-        foto: data.foto || null,
-        latitude: data.latitude || null,
-        longitude: data.longitude || null,
-      }
-    });
-    
-    // Live synchronization with Supabase
-    triggerSupabaseSync("assets", "INSERT", data);
-
-    return res.json({ success: true });
-  } catch (error: any) {
-    console.error("SQL Error on POST /api/assets:", error);
-    return res.status(500).json({ error: "Failed to save asset" });
-  }
+app.post("/api/assets", (req, res) => {
+  upsertItem("assets", req.body);
+  return res.json({ success: true });
 });
 
-app.delete("/api/assets/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    // Live synchronization with Supabase
-    triggerSupabaseSync("assets", "DELETE", { id });
-
-    await db.delete(assets).where(eq(assets.id, id));
-    return res.json({ success: true });
-  } catch (error: any) {
-    console.error("SQL Error on DELETE /api/assets:", error);
-    return res.status(500).json({ error: "Failed to delete asset" });
+app.delete("/api/assets/:id", (req, res) => {
+  const { id } = req.params;
+  if (dbState.assets) {
+    dbState.assets = dbState.assets.filter((a: any) => a.id !== id);
+    saveDbState();
   }
+  return res.json({ success: true });
 });
 
 // 6. Pengadaan Endpoints (Log Rencana Belanja APBDes)
-app.get("/api/pengadaan", async (req, res) => {
-  try {
-    const list = await db.select().from(pengadaan);
-    return res.json(list);
-  } catch (error: any) {
-    console.error("SQL Error in /api/pengadaan:", error);
-    return res.status(500).json({ error: "Failed to fetch procurement registers" });
-  }
+app.get("/api/pengadaan", (req, res) => {
+  return res.json(dbState.pengadaan || []);
 });
 
-app.post("/api/pengadaan", async (req, res) => {
-  try {
-    const data = req.body;
-    await db.insert(pengadaan).values({
-      id: data.id,
-      tanggal: data.tanggal,
-      kegiatan: data.kegiatan,
-      sumber_dana: data.sumber_dana,
-      kode_rekening: data.kode_rekening,
-      barang: data.barang,
-      volume: Number(data.volume || 1),
-      harga: Number(data.harga || 0),
-      total: Number(data.total || 0),
-      lokasi: data.lokasi,
-      foto: data.foto || null,
-      status: data.status,
-    }).onConflictDoUpdate({
-      target: pengadaan.id,
-      set: {
-        tanggal: data.tanggal,
-        kegiatan: data.kegiatan,
-        sumber_dana: data.sumber_dana,
-        kode_rekening: data.kode_rekening,
-        barang: data.barang,
-        volume: Number(data.volume || 1),
-        harga: Number(data.harga || 0),
-        total: Number(data.total || 0),
-        lokasi: data.lokasi,
-        foto: data.foto || null,
-        status: data.status,
-      }
-    });
-
-    // Live synchronization with Supabase
-    triggerSupabaseSync("pengadaan", "INSERT", data);
-
-    return res.json({ success: true });
-  } catch (error: any) {
-    console.error("SQL Error on POST /api/pengadaan:", error);
-    return res.status(500).json({ error: "Failed to save procurement record" });
-  }
+app.post("/api/pengadaan", (req, res) => {
+  upsertItem("pengadaan", req.body);
+  return res.json({ success: true });
 });
 
 // 7. Penggunaan Endpoints
-app.get("/api/penggunaan", async (req, res) => {
-  try {
-    const list = await db.select().from(penggunaan);
-    return res.json(list);
-  } catch (error: any) {
-    console.error("SQL Error in /api/penggunaan:", error);
-    return res.status(500).json({ error: "Failed to fetch usage registers" });
-  }
+app.get("/api/penggunaan", (req, res) => {
+  return res.json(dbState.penggunaan || []);
 });
 
-app.post("/api/penggunaan", async (req, res) => {
-  try {
-    const data = req.body;
-    await db.insert(penggunaan).values({
-      id: data.id,
-      sk: data.sk,
-      barang_id: data.barang_id,
-      nama_barang: data.nama_barang,
-      pengguna: data.pengguna,
-      tanggal: data.tanggal,
-      status: data.status,
-    }).onConflictDoUpdate({
-      target: penggunaan.id,
-      set: {
-        sk: data.sk,
-        barang_id: data.barang_id,
-        nama_barang: data.nama_barang,
-        pengguna: data.pengguna,
-        tanggal: data.tanggal,
-        status: data.status,
-      }
-    });
-    return res.json({ success: true });
-  } catch (error: any) {
-    console.error("SQL Error on POST /api/penggunaan:", error);
-    return res.status(500).json({ error: "Failed to save usage distribution" });
-  }
+app.post("/api/penggunaan", (req, res) => {
+  upsertItem("penggunaan", req.body);
+  return res.json({ success: true });
 });
 
 // 8. Pemanfaatan Endpoints (Bagi Hasil, Sewa, dll)
-app.get("/api/pemanfaatan", async (req, res) => {
-  try {
-    const list = await db.select().from(pemanfaatan);
-    return res.json(list);
-  } catch (error: any) {
-    console.error("SQL Error in /api/pemanfaatan:", error);
-    return res.status(500).json({ error: "Failed to fetch yield/lease logs" });
-  }
+app.get("/api/pemanfaatan", (req, res) => {
+  return res.json(dbState.pemanfaatan || []);
 });
 
-app.post("/api/pemanfaatan", async (req, res) => {
-  try {
-    const data = req.body;
-    await db.insert(pemanfaatan).values({
-      id: data.id,
-      barang_id: data.barang_id,
-      nama_barang: data.nama_barang,
-      jenis: data.jenis,
-      mitra: data.mitra,
-      periode_mulai: data.periode_mulai,
-      periode_selesai: data.periode_selesai,
-      nilai_kontrak: Number(data.nilai_kontrak || 0),
-      status: data.status,
-    }).onConflictDoUpdate({
-      target: pemanfaatan.id,
-      set: {
-        barang_id: data.barang_id,
-        nama_barang: data.nama_barang,
-        jenis: data.jenis,
-        mitra: data.mitra,
-        periode_mulai: data.periode_mulai,
-        periode_selesai: data.periode_selesai,
-        nilai_kontrak: Number(data.nilai_kontrak || 0),
-        status: data.status,
-      }
-    });
-    return res.json({ success: true });
-  } catch (error: any) {
-    console.error("SQL Error on POST /api/pemanfaatan:", error);
-    return res.status(500).json({ error: "Failed to save lease lease information" });
-  }
+app.post("/api/pemanfaatan", (req, res) => {
+  upsertItem("pemanfaatan", req.body);
+  return res.json({ success: true });
 });
 
 // 9. Kapitalisasi Endpoints
-app.get("/api/kapitalisasi", async (req, res) => {
-  try {
-    const list = await db.select().from(kapitalisasi);
-    return res.json(list);
-  } catch (error: any) {
-    console.error("SQL Error in /api/kapitalisasi:", error);
-    return res.status(500).json({ error: "Failed to fetch capitalization log" });
-  }
+app.get("/api/kapitalisasi", (req, res) => {
+  return res.json(dbState.kapitalisasi || []);
 });
 
-app.post("/api/kapitalisasi", async (req, res) => {
-  try {
-    const data = req.body;
-    await db.insert(kapitalisasi).values({
-      id: data.id,
-      barang_id: data.barang_id,
-      nama_barang: data.nama_barang,
-      tanggal: data.tanggal,
-      keterangan: data.keterangan,
-      nilai_lama: Number(data.nilai_lama || 0),
-      nilai_tambah: Number(data.nilai_tambah || 0),
-      nilai_baru: Number(data.nilai_baru || 0),
-      status: data.status,
-    }).onConflictDoUpdate({
-      target: kapitalisasi.id,
-      set: {
-        barang_id: data.barang_id,
-        nama_barang: data.nama_barang,
-        tanggal: data.tanggal,
-        keterangan: data.keterangan,
-        nilai_lama: Number(data.nilai_lama || 0),
-        nilai_tambah: Number(data.nilai_tambah || 0),
-        nilai_baru: Number(data.nilai_baru || 0),
-        status: data.status,
-      }
-    });
-    return res.json({ success: true });
-  } catch (error: any) {
-    console.error("SQL Error on POST /api/kapitalisasi:", error);
-    return res.status(500).json({ error: "Failed to save dynamic asset capitalization" });
-  }
+app.post("/api/kapitalisasi", (req, res) => {
+  upsertItem("kapitalisasi", req.body);
+  return res.json({ success: true });
 });
 
 // 10. Penghapusan Endpoints
-app.get("/api/penghapusan", async (req, res) => {
-  try {
-    const list = await db.select().from(penghapusan);
-    return res.json(list);
-  } catch (error: any) {
-    console.error("SQL Error in /api/penghapusan:", error);
-    return res.status(500).json({ error: "Failed to fetch disposal logs" });
-  }
+app.get("/api/penghapusan", (req, res) => {
+  return res.json(dbState.penghapusan || []);
 });
 
-app.post("/api/penghapusan", async (req, res) => {
-  try {
-    const data = req.body;
-    await db.insert(penghapusan).values({
-      id: data.id,
-      barang_id: data.barang_id,
-      nama_barang: data.nama_barang,
-      tanggal: data.tanggal,
-      alasan: data.alasan,
-      berita_acara: data.berita_acara,
-      nilai_buku: Number(data.nilai_buku || 0),
-    }).onConflictDoUpdate({
-      target: penghapusan.id,
-      set: {
-        barang_id: data.barang_id,
-        nama_barang: data.nama_barang,
-        tanggal: data.tanggal,
-        alasan: data.alasan,
-        berita_acara: data.berita_acara,
-        nilai_buku: Number(data.nilai_buku || 0),
-      }
-    });
-    return res.json({ success: true });
-  } catch (error: any) {
-    console.error("SQL Error on POST /api/penghapusan:", error);
-    return res.status(500).json({ error: "Failed to log disposal" });
-  }
+app.post("/api/penghapusan", (req, res) => {
+  upsertItem("penghapusan", req.body);
+  return res.json({ success: true });
 });
 
 // 11. Persediaan Endpoints
-app.get("/api/persediaan", async (req, res) => {
-  try {
-    const list = await db.select().from(persediaan);
-    return res.json(list);
-  } catch (error: any) {
-    console.error("SQL Error in /api/persediaan:", error);
-    return res.status(500).json({ error: "Failed to fetch supplies" });
-  }
+app.get("/api/persediaan", (req, res) => {
+  return res.json(dbState.persediaan || []);
 });
 
-app.post("/api/persediaan", async (req, res) => {
-  try {
-    const data = req.body;
-    await db.insert(persediaan).values({
-      id: data.id,
-      tanggal: data.tanggal,
-      nama_barang: data.nama_barang,
-      tipe: data.tipe,
-      jumlah: Number(data.jumlah || 0),
-      penerima: data.penerima || null,
-      stok_sisa: Number(data.stok_sisa || 0),
-      keterangan: data.keterangan || null,
-    }).onConflictDoUpdate({
-      target: persediaan.id,
-      set: {
-        tanggal: data.tanggal,
-        nama_barang: data.nama_barang,
-        tipe: data.tipe,
-        jumlah: Number(data.jumlah || 0),
-        penerima: data.penerima || null,
-        stok_sisa: Number(data.stok_sisa || 0),
-        keterangan: data.keterangan || null,
-      }
-    });
-
-    // Live synchronization with Supabase
-    triggerSupabaseSync("persediaan", "INSERT", data);
-
-    return res.json({ success: true });
-  } catch (error: any) {
-    console.error("SQL Error on POST /api/persediaan:", error);
-    return res.status(500).json({ error: "Failed to save supplies records" });
-  }
+app.post("/api/persediaan", (req, res) => {
+  upsertItem("persediaan", req.body);
+  return res.json({ success: true });
 });
 
 // 12. Audit Endpoints
-app.get("/api/audit", async (req, res) => {
-  try {
-    const list = await db.select().from(audit);
-    return res.json(list);
-  } catch (error: any) {
-    console.error("SQL Error in /api/audit:", error);
-    return res.status(500).json({ error: "Failed to fetch physical audit registers" });
-  }
+app.get("/api/audit", (req, res) => {
+  return res.json(dbState.audit || []);
 });
 
-app.post("/api/audit", async (req, res) => {
-  try {
-    const data = req.body;
-    await db.insert(audit).values({
-      id: data.id,
-      tanggal: data.tanggal,
-      barang_id: data.barang_id,
-      nama_barang: data.nama_barang,
-      kondisi: data.kondisi,
-      auditor: data.auditor,
-      catatan: data.catatan,
-      foto: data.foto || null,
-    }).onConflictDoUpdate({
-      target: audit.id,
-      set: {
-        tanggal: data.tanggal,
-        barang_id: data.barang_id,
-        nama_barang: data.nama_barang,
-        kondisi: data.kondisi,
-        auditor: data.auditor,
-        catatan: data.catatan,
-        foto: data.foto || null,
-      }
-    });
-
-    // Live synchronization with Supabase
-    triggerSupabaseSync("audit", "INSERT", data);
-
-    return res.json({ success: true });
-  } catch (error: any) {
-    console.error("SQL Error on POST /api/audit:", error);
-    return res.status(500).json({ error: "Failed to log physical audit inspection" });
-  }
+app.post("/api/audit", (req, res) => {
+  upsertItem("audit", req.body);
+  return res.json({ success: true });
 });
 
 // ------------------------------------------------------------------------------
@@ -765,220 +445,6 @@ Berikan output berupa rekomendasi optimasi umur, prediksi sisa umur ekonomis, pe
         ]
       }
     });
-  }
-});
-
-// ------------------------------------------------------------------------------
-// SUPABASE DATABASE SYNC & BACKUP CONFIGURATION & ENDPOINTS
-// ------------------------------------------------------------------------------
-const SUPABASE_CONFIG_PATH = path.join(process.cwd(), "supabase_config.json");
-
-function getSupabaseConfig() {
-  if (fs.existsSync(SUPABASE_CONFIG_PATH)) {
-    try {
-      return JSON.parse(fs.readFileSync(SUPABASE_CONFIG_PATH, "utf-8"));
-    } catch {
-      // safe fallback on parse errors
-    }
-  }
-  return { supabaseUrl: "", supabaseKey: "", liveSyncEnabled: false };
-}
-
-function saveSupabaseConfig(config: any) {
-  try {
-    fs.writeFileSync(SUPABASE_CONFIG_PATH, JSON.stringify(config, null, 2), "utf-8");
-  } catch (err) {
-    console.error("Gagal menyimpan file konfigurasi Supabase:", err);
-  }
-}
-
-// Live synchronization with Supabase PostgREST REST API
-async function triggerSupabaseSync(tableName: string, actionType: "INSERT" | "UPDATE" | "DELETE", payload: any) {
-  try {
-    const config = getSupabaseConfig();
-    if (!config.liveSyncEnabled || !config.supabaseUrl || !config.supabaseKey) return;
-
-    // Clean up trailing slash
-    const baseUrl = config.supabaseUrl.replace(/\/$/, "");
-    const url = `${baseUrl}/rest/v1/${tableName}`;
-    
-    const headers: Record<string, string> = {
-      "apikey": config.supabaseKey,
-      "Authorization": `Bearer ${config.supabaseKey}`,
-      "Content-Type": "application/json",
-      "Prefer": "resolution=merge-duplicates" // Tells Supabase to upsert on conflict
-    };
-
-    if (actionType === "INSERT" || actionType === "UPDATE") {
-      const payloadArray = Array.isArray(payload) ? payload : [payload];
-      
-      fetch(url, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payloadArray)
-      }).then(async (res) => {
-        const text = await res.text();
-        console.log(`[Supabase Sync] ${tableName} ${actionType}: Status ${res.status}`, text);
-      }).catch(err => {
-        console.error(`[Supabase Sync Error] Failed to execute ${actionType} connection:`, err);
-      });
-    } else if (actionType === "DELETE") {
-      fetch(`${url}?id=eq.${payload.id}`, {
-        method: "DELETE",
-        headers
-      }).then(async (res) => {
-        const text = await res.text();
-        console.log(`[Supabase Sync] ${tableName} DELETE: Status ${res.status}`, text);
-      }).catch(err => {
-        console.error(`[Supabase Sync Error] Failed to execute DELETE:`, err);
-      });
-    }
-  } catch (err) {
-    console.error("[Supabase Live Sync Error]:", err);
-  }
-}
-
-// REST API endpoint to pull Supabase settings
-app.get("/api/supabase/config", (req, res) => {
-  try {
-    return res.json(getSupabaseConfig());
-  } catch (err: any) {
-    return res.status(500).json({ error: err.message });
-  }
-});
-
-// REST API endpoint to save Supabase settings
-app.post("/api/supabase/config", (req, res) => {
-  try {
-    const config = req.body;
-    const nextConfig = {
-      supabaseUrl: config.supabaseUrl || "",
-      supabaseKey: config.supabaseKey || "",
-      liveSyncEnabled: !!config.liveSyncEnabled
-    };
-    saveSupabaseConfig(nextConfig);
-    return res.json({ success: true, config: nextConfig });
-  } catch (err: any) {
-    return res.status(500).json({ error: err.message });
-  }
-});
-
-// Test Supabase REST API connection
-app.post("/api/supabase/test", async (req, res) => {
-  try {
-    const { supabaseUrl, supabaseKey } = req.body;
-    if (!supabaseUrl || !supabaseKey) {
-      return res.status(400).json({ error: "Supabase Project URL dan Anon/Service-Role Key diperlukan." });
-    }
-
-    const baseUrl = supabaseUrl.replace(/\/$/, "");
-    const response = await fetch(`${baseUrl}/rest/v1/`, {
-      method: "GET",
-      headers: {
-        "apikey": supabaseKey,
-        "Authorization": `Bearer ${supabaseKey}`
-      }
-    });
-
-    if (response.ok) {
-      return res.json({ 
-        success: true, 
-        message: "Koneksi berhasil terhubung secara langsung ke REST API Supabase! Akses terverifikasi aman." 
-      });
-    } else {
-      const text = await response.text();
-      return res.json({ 
-        success: false, 
-        message: `Supabase menolak koneksi (Status: ${response.status}). Periksa URL atau API Key Anda.`,
-        error: text
-      });
-    }
-  } catch (err: any) {
-    console.error("Test connection to Supabase failed:", err);
-    return res.status(500).json({ success: false, error: err.message || "Gagal menghubungi server Supabase." });
-  }
-});
-
-// Sync and Push All tables endpoint (Full Backup to Supabase)
-app.post("/api/supabase/sync-all", async (req, res) => {
-  try {
-    const config = getSupabaseConfig();
-    if (!config.supabaseUrl || !config.supabaseKey) {
-      return res.status(400).json({ error: "Supabase Project URL dan API Key belum dikonfigurasi di pengaturan database." });
-    }
-
-    // Load active records from local DB
-    const listProfil = await db.select().from(profilDesa);
-    const listUsers = await db.select().from(users);
-    const listPerangkat = await db.select().from(perangkatDesa);
-    const listRuangan = await db.select().from(ruangan);
-    const listAssets = await db.select().from(assets);
-    const listPengadaan = await db.select().from(pengadaan);
-    const listPenggunaan = await db.select().from(penggunaan);
-    const listPemanfaatan = await db.select().from(pemanfaatan);
-    const listKapitalisasi = await db.select().from(kapitalisasi);
-    const listPenghapusan = await db.select().from(penghapusan);
-    const listPersediaan = await db.select().from(persediaan);
-    const listAudit = await db.select().from(audit);
-
-    const tablesToPush = [
-      { name: "profil_desa", data: listProfil },
-      { name: "users", data: listUsers },
-      { name: "perangkat_desa", data: listPerangkat },
-      { name: "ruangan", data: listRuangan },
-      { name: "assets", data: listAssets },
-      { name: "pengadaan", data: listPengadaan },
-      { name: "penggunaan", data: listPenggunaan },
-      { name: "pemanfaatan", data: listPemanfaatan },
-      { name: "kapitalisasi", data: listKapitalisasi },
-      { name: "penghapusan", data: listPenghapusan },
-      { name: "persediaan", data: listPersediaan },
-      { name: "audit", data: listAudit },
-    ];
-
-    const baseUrl = config.supabaseUrl.replace(/\/$/, "");
-    const syncResults = [];
-
-    for (const table of tablesToPush) {
-      try {
-        const url = `${baseUrl}/rest/v1/${table.name}`;
-        
-        const response = await fetch(url, {
-          method: "POST",
-          headers: {
-            "apikey": config.supabaseKey,
-            "Authorization": `Bearer ${config.supabaseKey}`,
-            "Content-Type": "application/json",
-            "Prefer": "resolution=merge-duplicates"
-          },
-          body: JSON.stringify(table.data)
-        });
-
-        const resText = await response.text();
-        const success = response.status === 201 || response.status === 200 || response.status === 204;
-
-        syncResults.push({
-          table: table.name.toUpperCase(),
-          success: success,
-          message: success ? "Tersinkron (Upsert)" : `Gagal: ${response.status}`,
-          count: table.data.length,
-          error: success ? undefined : resText
-        });
-      } catch (err: any) {
-        console.error(`Error syncing table ${table.name} to Supabase:`, err);
-        syncResults.push({
-          table: table.name.toUpperCase(),
-          success: false,
-          error: err.message || String(err),
-          count: table.data.length
-        });
-      }
-    }
-
-    return res.json({ success: true, results: syncResults });
-  } catch (error: any) {
-    console.error("Supabase full sync backup error:", error);
-    return res.status(500).json({ error: error.message || "Gagal mengekspor data database ke Supabase." });
   }
 });
 

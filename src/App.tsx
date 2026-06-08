@@ -38,7 +38,6 @@ import Supplies from "./components/Supplies";
 import ScannerAudit from "./components/ScannerAudit";
 import Reports from "./components/Reports";
 import PremiumFeatures from "./components/PremiumFeatures";
-import DatabaseCenter from "./components/DatabaseCenter";
 import KodeBarang from "./components/KodeBarang";
 import GisMap from "./components/GisMap";
 
@@ -389,8 +388,7 @@ export default function App() {
               { id: "gis", label: "Peta GIS Aset", icon: MapPin },
               { id: "scanner", label: "Fisik Scan / Audit", icon: Compass, roles: ["Administrator", "Operator Desa", "Auditor"] },
               { id: "reports", label: "Pencetakan / Laporan", icon: Printer, roles: ["Administrator", "Operator Desa", "Kepala Desa", "Auditor"] },
-              { id: "premium", label: "Saran Revaluasi AI", icon: Sparkles, roles: ["Administrator", "Operator Desa", "Kepala Desa", "Auditor"] },
-              { id: "sync", label: "Supabase Cloud Sync", icon: Database, roles: ["Administrator"] }
+              { id: "premium", label: "Saran Revaluasi AI", icon: Sparkles, roles: ["Administrator", "Operator Desa", "Kepala Desa", "Auditor"] }
             ].map(tab => {
               // check authorization based on array of allowed roles
               if (tab.roles && !tab.roles.includes(currentUser.role)) return null;
@@ -524,13 +522,6 @@ export default function App() {
             <PremiumFeatures 
               assets={assets} 
               onSendWhatsApp={handleSendWhatsAppNotification}
-            />
-          )}
-
-          {currentTab === "sync" && (
-            <DatabaseCenter 
-              dbQueue={dbQueue} 
-              onClearQueue={clearSyncQueue} 
             />
           )}
         </main>

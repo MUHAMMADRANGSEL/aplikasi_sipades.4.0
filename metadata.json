@@ -1,0 +1,6 @@
+{
+  "name": "SIPADES SMART",
+  "description": "Sistem Pengelolaan Aset Desa Digital terintegrasi dengan Google Spreadsheet Database dan Apps Script, mendukung inventarisasi, pelabelan, pemanfaatan, penghapusan, audit, peta GIS, dan rekomendasi bertenaga AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

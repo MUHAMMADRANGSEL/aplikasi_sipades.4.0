@@ -139,9 +139,14 @@ $logo_desa = $profil_desa['logo'] ?: 'https://upload.wikimedia.org/wikipedia/com
                     <span class="block text-xs font-bold text-slate-800 leading-none"><?php echo htmlspecialchars($_SESSION['user_nama']); ?></span>
                     <span class="text-[9.5px] font-semibold text-slate-400 uppercase font-mono mt-0.5 tracking-wider"><?php echo htmlspecialchars($_SESSION['user_role']); ?> ({Lokal})</span>
                 </div>
-                <div class="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600 text-xs text-center">
+                <div class="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600 text-xs text-center mr-1">
                     <?php echo substr($_SESSION['user_nama'], 0, 1); ?>
                 </div>
+                <!-- Topbar Quick Logout Button -->
+                <a href="logout.php" title="Keluar Aplikasi" class="bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-600 p-2 rounded-xl transition-all border border-rose-100/60 duration-150 flex items-center gap-1.5 px-3">
+                    <i data-lucide="log-out" class="h-3.5 w-3.5"></i>
+                    <span class="text-[11px] font-bold uppercase tracking-wider">Keluar</span>
+                </a>
             </div>
         </header>
 

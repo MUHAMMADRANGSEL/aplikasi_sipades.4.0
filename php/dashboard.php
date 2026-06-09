@@ -9,16 +9,16 @@ require_once 'header.php';
 
 // 1. Eksekusi Query Ringkasan Statistik Utama
 $stmt_jml_aset = $pdo->query("SELECT COUNT(*) as total FROM assets");
-$total_aset = $stmt_jml_aset->fetch()['total'] ?: 0;
+$total_aset = $stmt_jml_aset ? ($stmt_jml_aset->fetch()['total'] ?: 0) : 0;
 
 $stmt_nilai_aset = $pdo->query("SELECT SUM(nilai) as total FROM assets");
-$total_nilai = $stmt_nilai_aset->fetch()['total'] ?: 0;
+$total_nilai = $stmt_nilai_aset ? ($stmt_nilai_aset->fetch()['total'] ?: 0) : 0;
 
 $stmt_rusak_aset = $pdo->query("SELECT COUNT(*) as total FROM assets WHERE kondisi IN ('Rusak Ringan', 'Rusak Berat', 'Hilang')");
-$total_rusak = $stmt_rusak_aset->fetch()['total'] ?: 0;
+$total_rusak = $stmt_rusak_aset ? ($stmt_rusak_aset->fetch()['total'] ?: 0) : 0;
 
 $stmt_procurement = $pdo->query("SELECT SUM(total) as total FROM pengadaan WHERE status = 'Terposting'");
-$total_procurement = $stmt_procurement->fetch()['total'] ?: 0;
+$total_procurement = $stmt_procurement ? ($stmt_procurement->fetch()['total'] ?: 0) : 0;
 
 // 2. Query Rekapitulasi Berdasarkan Buku KIB A - F
 $rekaps_kib = [

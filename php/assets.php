@@ -28,8 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $progress = safeInput($_POST['progress']);
         $keterangan = safeInput($_POST['keterangan']);
         $foto = safeInput($_POST['foto']) ?: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400';
-        $latitude = $_POST['latitude'] !== '' ? (double) $_POST['latitude'] : null;
-        $longitude = $_POST['longitude'] !== '' ? (double) $_POST['longitude'] : null;
+        $latitude = (isset($_POST['latitude']) && $_POST['latitude'] !== '') ? (double) $_POST['latitude'] : null;
+        $longitude = (isset($_POST['longitude']) && $_POST['longitude'] !== '') ? (double) $_POST['longitude'] : null;
 
         if (empty($kategori) || empty($kode_barang) || empty($nama_barang) || empty($tahun) || empty($lokasi)) {
             $error_msg = "Isian Kategori, Kode Barang, Nama Barang, Tahun, dan Lokasi wajib diisi.";

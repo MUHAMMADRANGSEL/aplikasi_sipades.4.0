@@ -66,8 +66,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 // 3. AMBIL DATA TERBARU
-$profil_desa = $pdo->query("SELECT * FROM profil_desa LIMIT 1")->fetch();
-$staff_list = $pdo->query("SELECT * FROM perangkat_desa ORDER BY jabatan ASC")->fetchAll();
+$stmt_prof = $pdo->query("SELECT * FROM profil_desa LIMIT 1");
+$profil_desa = $stmt_prof ? $stmt_prof->fetch() : false;
+
+$stmt_staff = $pdo->query("SELECT * FROM perangkat_desa ORDER BY jabatan ASC");
+$staff_list = $stmt_staff ? $stmt_staff->fetchAll() : [];
 ?>
 
 <div class="space-y-6 text-left">
@@ -108,33 +111,33 @@ $staff_list = $pdo->query("SELECT * FROM perangkat_desa ORDER BY jabatan ASC")->
 
                 <div class="space-y-1">
                     <label class="block font-bold text-slate-500 uppercase">Kode Desa Administrasi Kemendagri:</label>
-                    <input type="text" name="kode_desa" value="<?php echo htmlspecialchars($profil_desa['kode_desa']); ?>" readonly
+                    <input type="text" name="kode_desa" value="<?php echo htmlspecialchars($profil_desa['kode_desa'] ?? '52.03.02.2008'); ?>" readonly
                            class="w-full p-2.5 rounded-lg border border-slate-200 bg-slate-50 font-mono font-bold text-slate-500 shadow-inner outline-none cursor-not-allowed">
                     <span class="block text-[10px] text-slate-400 mt-1 italic">Kode ini terkunci secara definitif di Lombok Timur.</span>
                 </div>
 
                 <div class="space-y-1">
                     <label class="block font-bold text-slate-700 uppercase">Nama Instansi Desa:</label>
-                    <input type="text" name="nama_desa" value="<?php echo htmlspecialchars($profil_desa['nama_desa']); ?>" required
+                    <input type="text" name="nama_desa" value="<?php echo htmlspecialchars($profil_desa['nama_desa'] ?? 'Desa Rarang Selatan'); ?>" required
                            class="w-full p-2.5 rounded-lg border border-slate-200 outline-none focus:border-emerald-500">
                 </div>
 
                 <div class="grid grid-cols-3 gap-3">
                     <div class="space-y-1">
                         <label class="block font-bold text-slate-700 uppercase">Kecamatan:</label>
-                        <input type="text" name="kecamatan" value="<?php echo htmlspecialchars($profil_desa['kecamatan']); ?>" required
+                        <input type="text" name="kecamatan" value="<?php echo htmlspecialchars($profil_desa['kecamatan'] ?? 'Terara'); ?>" required
                                class="w-full p-2.5 rounded-lg border border-slate-200 outline-none focus:border-emerald-500">
                     </div>
 
                     <div class="space-y-1">
                         <label class="block font-bold text-slate-700 uppercase">Kabupaten:</label>
-                        <input type="text" name="kabupaten" value="<?php echo htmlspecialchars($profil_desa['kabupaten']); ?>" required
+                        <input type="text" name="kabupaten" value="<?php echo htmlspecialchars($profil_desa['kabupaten'] ?? 'Lombok Timur'); ?>" required
                                class="w-full p-2.5 rounded-lg border border-slate-200 outline-none focus:border-emerald-500">
                     </div>
 
                     <div class="space-y-1">
                         <label class="block font-bold text-slate-700 uppercase">Provinsi:</label>
-                        <input type="text" name="provinsi" value="<?php echo htmlspecialchars($profil_desa['provinsi']); ?>" required
+                        <input type="text" name="provinsi" value="<?php echo htmlspecialchars($profil_desa['provinsi'] ?? 'NTB'); ?>" required
                                class="w-full p-2.5 rounded-lg border border-slate-200 outline-none focus:border-emerald-500">
                     </div>
                 </div>

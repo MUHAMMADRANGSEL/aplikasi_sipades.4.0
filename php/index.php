@@ -45,9 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     // Ambil info profil desa
                     $stmt_desa = $pdo->query("SELECT * FROM profil_desa LIMIT 1");
-                    $desa = $stmt_desa->fetch();
-                    $_SESSION['desa_nama'] = $desa ? $desa['nama_desa'] : 'Desa Rarang Selatan';
-                    $_SESSION['desa_logo'] = $desa ? $desa['logo'] : '';
+                    $desa = $stmt_desa ? $stmt_desa->fetch() : false;
+                    $_SESSION['desa_nama'] = ($desa && !empty($desa['nama_desa'])) ? $desa['nama_desa'] : 'Desa Rarang Selatan';
+                    $_SESSION['desa_logo'] = ($desa && !empty($desa['logo'])) ? $desa['logo'] : '';
 
                     header("Location: dashboard.php");
                     exit;

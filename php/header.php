@@ -13,9 +13,9 @@ $current_page = basename($_SERVER['PHP_SELF']);
 
 // Ambil data profil desa terbaru untuk header
 $stmt_desa = $pdo->query("SELECT * FROM profil_desa LIMIT 1");
-$profil_desa = $stmt_desa->fetch();
-$nama_desa = $profil_desa ? $profil_desa['nama_desa'] : 'Desa Rarang Selatan';
-$logo_desa = $profil_desa['logo'] ?: 'https://upload.wikimedia.org/wikipedia/commons/4/4e/Lambang_Dati_II_Lombok_Timur.png';
+$profil_desa = $stmt_desa ? $stmt_desa->fetch() : false;
+$nama_desa = ($profil_desa && !empty($profil_desa['nama_desa'])) ? $profil_desa['nama_desa'] : 'Desa Rarang Selatan';
+$logo_desa = ($profil_desa && !empty($profil_desa['logo'])) ? $profil_desa['logo'] : 'https://upload.wikimedia.org/wikipedia/commons/4/4e/Lambang_Dati_II_Lombok_Timur.png';
 ?>
 <!DOCTYPE html>
 <html lang="id">

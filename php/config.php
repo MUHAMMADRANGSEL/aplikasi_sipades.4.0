@@ -40,38 +40,47 @@ try {
     $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
     
 } catch (PDOException $e) {
-    // Tampilan kegagalan koneksi database yang rapi
-    die("<!DOCTYPE html>
+    die(renderDbError($e->getMessage(), "Koneksi ke server database MySQL Anda gagal."));
+}
+
+// Global Exception handler to catch any subsequent query execution errors cleanly
+set_exception_handler(function($e) {
+    if ($e instanceof PDOException) {
+         die(renderDbError($e->getMessage(), "Terdapat masalah pada kueri database (contoh: tabel belum dibuat). Pastikan Anda telah mengimpor database.sql penuh."));
+    }
+    die(renderDbError($e->getMessage(), "Terjadi kesalahan internal pada sistem."));
+});
+
+function renderDbError($msg, $subtitle) {
+    return "<!DOCTYPE html>
     <html lang='id'>
     <head>
         <meta charset='UTF-8'>
         <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-        <title>Database Connection Error - SIPADES SMART</title>
+        <title>Sistem Error - SIPADES SMART</title>
         <script src='https://cdn.tailwindcss.com'></script>
     </head>
     <body class='bg-slate-50 min-h-screen flex items-center justify-center p-6 font-sans'>
-        <div class='max-w-md w-full bg-white rounded-2xl border border-slate-200 p-8 shadow-xl text-center space-y-4 animate-fade-in'>
+        <div class='max-w-md w-full bg-white rounded-2xl border border-slate-200 p-8 shadow-xl text-center space-y-4'>
             <div class='h-16 w-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto text-rose-500'>
                 <svg xmlns='http://www.w3.org/2000/svg' class='h-8 w-8' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
                     <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' />
                 </svg>
             </div>
-            <h1 class='text-lg font-black text-slate-800 uppercase tracking-wider'>Akses Database Terputus</h1>
-            <p class='text-xs text-slate-500 leading-relaxed'>
-                Aplikasi SIPADES SMART gagal terhubung ke server database MySQL Anda menggunakan PDO. Hubungi administrator desa d/a Pemdes Rarang Selatan.
-            </p>
+            <h1 class='text-lg font-black text-slate-800 uppercase tracking-wider'>Gangguan Sistem</h1>
+            <p class='text-xs text-slate-500 leading-relaxed'>{$subtitle}</p>
             <div class='bg-slate-50 border border-slate-200 p-3 rounded-lg text-left'>
                 <span class='block text-[10px] font-bold text-slate-400 uppercase font-mono'>Pesan Kesalahan:</span>
-                <code class='text-[10px] text-rose-600 font-mono break-all'>" . htmlspecialchars($e->getMessage()) . "</code>
+                <code class='text-[10px] text-rose-600 font-mono break-all'>" . htmlspecialchars($msg) . "</code>
             </div>
             <div class='pt-2'>
-                <a href='index.php' class='block w-full rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 text-xs transition duration-150 shadow-md'>
+                <a href='index.php' class='block w-full rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 text-xs transition duration-150 shadow-md text-center'>
                     Muat Ulang Halaman
                 </a>
             </div>
         </div>
     </body>
-    </html>");
+    </html>";
 }
 
 /**

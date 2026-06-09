@@ -49,6 +49,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     } catch (Exception $e) {
         $error_msg = "Gagal memproses alur: " . $e->getMessage();
     }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update') {
+    try {
+        $id = safeInput($_POST['id']);
+        $tanggal = safeInput($_POST['tanggal']);
+        $nama_barang = safeInput($_POST['nama_barang']);
+        $tipe = safeInput($_POST['tipe']);
+        $jumlah = (int) $_POST['jumlah'];
+        $penerima = safeInput($_POST['penerima']);
+        $keterangan = safeInput($_POST['keterangan']);
+
+        if (empty($id) || empty($tanggal) || empty($nama_barang) || empty($tipe) || $jumlah <= 0) {
+            $error_msg = "Perbaikan alur wajib melampirkan isian penting.";
+        } else {
+            $stmt_update = $pdo->prepare("UPDATE persediaan SET tanggal=?, nama_barang=?, tipe=?, jumlah=?, penerima=?, keterangan=? WHERE id=?");
+            $stmt_update->execute([$tanggal, $nama_barang, $tipe, $jumlah, $penerima ?: null, $keterangan, $id]);
+            $success_msg = "Transaksi [{$id}] berhasil direvisi.";
+        }
+    } catch (Exception $e) {
+        $error_msg = "Gagal merubah alur: " . $e->getMessage();
+    }
 }
 
 // 2. AMBIL LOG AKTIVITAS PERSEDIAAN
@@ -154,12 +174,13 @@ $rekap_stok = $stmt_rekap->fetchAll();
                             <th class="p-3 text-right">Volume</th>
                             <th class="p-3 text-right">Sisa Lapangan</th>
                             <th class="p-3">Penerima / Ket</th>
+                            <th class="p-3 text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 text-slate-600 leading-normal">
                         <?php if (empty($logs_persediaan)): ?>
                             <tr>
-                                <td colspan="6" class="p-8 text-center text-slate-400 italic">Belum ada transaksi keluar-masuk logistik.</td>
+                                <td colspan="7" class="p-8 text-center text-slate-400 italic">Belum ada transaksi keluar-masuk logistik.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($logs_persediaan as $row): ?>
@@ -181,6 +202,16 @@ $rekap_stok = $stmt_rekap->fetchAll();
                                         <?php endif; ?>
                                         <span class="block text-[10px] text-slate-400 italic truncate" title="<?php echo htmlspecialchars($row['keterangan']); ?>"><?php echo htmlspecialchars($row['keterangan']); ?></span>
                                     </td>
+                                    <td class="p-3 text-center">
+                                        <div class="inline-flex gap-1 items-center justify-center">
+                                            <button onclick="viewPersediaan(<?php echo htmlspecialchars(json_encode($row)); ?>)" class="bg-white border border-indigo-100 hover:bg-indigo-50 text-indigo-600 rounded p-1 shadow-xxs transition cursor-pointer" title="View">
+                                                <i data-lucide="eye" class="h-3 w-3"></i>
+                                            </button>
+                                            <button onclick="editPersediaan(<?php echo htmlspecialchars(json_encode($row)); ?>)" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded p-1 shadow-xxs transition cursor-pointer" title="Edit">
+                                                <i data-lucide="edit" class="h-3 w-3"></i>
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -201,8 +232,9 @@ $rekap_stok = $stmt_rekap->fetchAll();
                 </button>
             </div>
 
-            <form action="" method="POST" class="space-y-4 text-xs pt-1">
-                <input type="hidden" name="action" value="insert">
+            <form action="" method="POST" id="form-persediaan" class="space-y-4 text-xs pt-1">
+                <input type="hidden" name="action" id="form-action-persediaan" value="insert">
+                <input type="hidden" name="id" id="form-persediaan-id" value="">
 
                 <div class="space-y-1">
                     <label class="block font-bold text-slate-700 uppercase">Tanggal Alur:</label>
@@ -263,6 +295,59 @@ $rekap_stok = $stmt_rekap->fetchAll();
     </div>
 
 </div>
+
+<script>
+    function editPersediaan(data) {
+        const form = document.querySelector('#form-persediaan');
+        document.querySelector('#form-action-persediaan').value = 'update';
+        document.querySelector('#form-persediaan-id').value = data.id;
+        
+        form.querySelector('[name="tanggal"]').value = data.tanggal || '';
+        form.querySelector('[name="nama_barang"]').value = data.nama_barang || '';
+        form.querySelector('[name="tipe"]').value = data.tipe || 'Masuk';
+        form.querySelector('[name="jumlah"]').value = data.jumlah || '';
+        form.querySelector('[name="penerima"]').value = data.penerima || '';
+        form.querySelector('[name="keterangan"]').value = data.keterangan || '';
+        
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        if (btnSubmit) btnSubmit.innerText = 'Simpan Pembaruan Alur';
+        
+        document.querySelector('#add-stock-modal h3').innerText = 'Perbaikan Log Transaksi Gudang';
+        
+        Array.from(form.elements).forEach(el => el.disabled = false);
+        document.getElementById('add-stock-modal').classList.remove('hidden');
+    }
+
+    function viewPersediaan(data) {
+        editPersediaan(data);
+        document.querySelector('#add-stock-modal h3').innerText = 'Rincian Bukti Transaksi Logistik';
+        
+        const form = document.querySelector('#form-persediaan');
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        if (btnSubmit) btnSubmit.style.display = 'none';
+        
+        Array.from(form.elements).forEach(el => {
+            if(el.tagName !== 'BUTTON') {
+                el.disabled = true;
+            }
+        });
+    }
+
+    // Modal reset on close
+    document.querySelector('#add-stock-modal button[onclick*="add-stock-modal"]').onclick = function() {
+        document.getElementById('add-stock-modal').classList.add('hidden');
+        document.querySelector('#form-persediaan').reset();
+        document.querySelector('#form-action-persediaan').value = 'insert';
+        document.querySelector('#form-persediaan-id').value = '';
+        Array.from(document.querySelector('#form-persediaan').elements).forEach(el => el.disabled = false);
+        const btnSubmit = document.querySelector('#form-persediaan button[type="submit"]');
+        if (btnSubmit) {
+            btnSubmit.style.display = 'block';
+            btnSubmit.innerText = 'Simpan Transaksi';
+        }
+        document.querySelector('#add-stock-modal h3').innerText = 'Log Transaksi Pemasukan / Penarikan';
+    };
+</script>
 
 <?php 
 require_once 'footer.php'; 

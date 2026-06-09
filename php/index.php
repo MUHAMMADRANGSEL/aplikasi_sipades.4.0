@@ -72,6 +72,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
+        /* SAFE-BOOT LAYOUT FALLBACK */
+        .flex { display: flex !important; }
+        .flex-col { flex-direction: column !important; }
+        .justify-center { justify-content: center !important; }
+        .items-center { align-items: center !important; }
+        .min-h-screen { min-height: 100vh !important; }
+        .w-full { width: 100% !important; }
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>

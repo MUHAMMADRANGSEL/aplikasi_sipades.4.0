@@ -35,6 +35,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     } catch (Exception $e) {
         $error_msg = "Terjadi kesalahan: " . $e->getMessage();
     }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update') {
+    try {
+        $id = safeInput($_POST['id']);
+        $tanggal = safeInput($_POST['tanggal']);
+        $kegiatan = safeInput($_POST['kegiatan']);
+        $sumber_dana = safeInput($_POST['sumber_dana']);
+        $kode_rekening = safeInput($_POST['kode_rekening']);
+        $barang = safeInput($_POST['barang']);
+        $volume = (int) $_POST['volume'];
+        $harga = (double) $_POST['harga'];
+        $total = $volume * $harga;
+        $lokasi = safeInput($_POST['lokasi']);
+
+        if (empty($id) || empty($tanggal) || empty($kegiatan) || empty($barang)) {
+            $error_msg = "Kolom vital belum terisi!";
+        } else {
+            $stmt = $pdo->prepare("UPDATE pengadaan SET tanggal=?, kegiatan=?, sumber_dana=?, kode_rekening=?, barang=?, volume=?, harga=?, total=?, lokasi=? WHERE id=?");
+            $stmt->execute([$tanggal, $kegiatan, $sumber_dana, $kode_rekening, $barang, $volume, $harga, $total, $lokasi, $id]);
+            $success_msg = "Catatan belanja berhasil diperbarui!";
+        }
+    } catch (Exception $e) {
+        $error_msg = "Gagal memperbarui: " . $e->getMessage();
+    }
 }
 
 // 2. VERIFIKASI POSTING (Dari Draf -> Terposting)
@@ -189,22 +212,32 @@ $ruangan_list = $pdo->query("SELECT * FROM ruangan ORDER BY nama_ruangan ASC")->
                                         </span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="p-3 text-center">
+                                <td class="p-3">
+                                    <div class="flex flex-col gap-1 items-center justify-center">
                                     <?php if ($row['status'] === 'Draf'): ?>
                                         <?php if ($_SESSION['user_role'] === 'Administrator' || $_SESSION['user_role'] === 'Operator Desa'): ?>
                                             <a href="pengadaan.php?approve=<?php echo htmlspecialchars($row['id']); ?>" 
                                                onclick="return confirm('Apakah Anda yakin setuju memposting ini? Tindakan ini akan menyebarkannya secara otomatis sebagai bagian register Buku KIB B.')"
-                                               class="rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-1.5 px-2.5 text-[10px] uppercase shadow transition inline-flex items-center gap-1">
+                                               class="rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-1.5 px-2.5 text-[10px] uppercase shadow transition inline-flex items-center justify-center gap-1 w-full max-w-[120px]">
                                                 <i data-lucide="check" class="h-3 w-3"></i> Posting Aset
                                             </a>
+                                            <button onclick="editPengadaan(<?php echo htmlspecialchars(json_encode($row)); ?>)" 
+                                                    class="rounded border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold p-1 px-2.5 text-[10px] shadow-sm transition inline-flex items-center justify-center gap-1 w-full max-w-[120px]">
+                                                <i data-lucide="edit" class="h-3 w-3"></i> Edit Draf
+                                            </button>
                                         <?php else: ?>
                                             <span class="text-slate-400 italic text-[10px]">Tunggu Admin</span>
                                         <?php endif; ?>
                                     <?php else: ?>
-                                        <span class="text-slate-400 font-mono text-[10px] font-bold flex items-center justify-center gap-1">
+                                        <span class="text-slate-400 font-mono text-[10px] font-bold flex items-center justify-center gap-1 mb-1">
                                             <i data-lucide="shield-check" class="h-4 w-4 text-emerald-500"></i> Terverifikasi
                                         </span>
                                     <?php endif; ?>
+                                        <button onclick="viewPengadaan(<?php echo htmlspecialchars(json_encode($row)); ?>)" 
+                                                class="rounded border border-indigo-100 hover:bg-indigo-50 text-indigo-600 font-bold p-1 px-2.5 text-[10px] shadow-sm transition inline-flex items-center justify-center gap-1 w-full max-w-[120px]">
+                                            <i data-lucide="eye" class="h-3 w-3"></i> View
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -224,8 +257,9 @@ $ruangan_list = $pdo->query("SELECT * FROM ruangan ORDER BY nama_ruangan ASC")->
                 </button>
             </div>
 
-            <form action="" method="POST" class="space-y-4 text-xs pt-2">
-                <input type="hidden" name="action" value="insert">
+            <form action="" method="POST" id="form-pengadaan" class="space-y-4 text-xs pt-2">
+                <input type="hidden" name="action" id="form-action-pengadaan" value="insert">
+                <input type="hidden" name="id" id="form-pengadaan-id" value="">
 
                 <div class="space-y-1">
                     <label class="block font-bold text-slate-700 uppercase">Tanggal Belanja Realisasi:</label>
@@ -302,6 +336,62 @@ $ruangan_list = $pdo->query("SELECT * FROM ruangan ORDER BY nama_ruangan ASC")->
     </div>
 
 </div>
+
+<script>
+    function editPengadaan(data) {
+        const form = document.querySelector('#form-pengadaan');
+        document.querySelector('#form-action-pengadaan').value = 'update';
+        document.querySelector('#form-pengadaan-id').value = data.id;
+        
+        form.querySelector('[name="tanggal"]').value = data.tanggal || '';
+        form.querySelector('[name="kegiatan"]').value = data.kegiatan || '';
+        form.querySelector('[name="sumber_dana"]').value = data.sumber_dana || '';
+        form.querySelector('[name="kode_rekening"]').value = data.kode_rekening || '';
+        form.querySelector('[name="barang"]').value = data.barang || '';
+        form.querySelector('[name="volume"]').value = data.volume || '';
+        form.querySelector('[name="harga"]').value = data.harga || '';
+        form.querySelector('[name="lokasi"]').value = data.lokasi || '';
+        form.querySelector('[name="keterangan"]').value = data.keterangan || '';
+
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        if (btnSubmit) btnSubmit.innerText = 'Simpan Pembaruan Belanja';
+        
+        document.querySelector('#add-proc-modal h3').innerText = 'Perbaikan Catatan Belanja';
+        
+        Array.from(form.elements).forEach(el => el.disabled = false);
+        document.getElementById('add-proc-modal').classList.remove('hidden');
+    }
+
+    function viewPengadaan(data) {
+        editPengadaan(data);
+        document.querySelector('#add-proc-modal h3').innerText = 'Rincian Pengadaan Belanja';
+        
+        const form = document.querySelector('#form-pengadaan');
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        if (btnSubmit) btnSubmit.style.display = 'none';
+        
+        Array.from(form.elements).forEach(el => {
+            if(el.tagName !== 'BUTTON') {
+                el.disabled = true;
+            }
+        });
+    }
+
+    // Modal reset on close
+    document.querySelector('#add-proc-modal button[onclick*="add-proc-modal"]').onclick = function() {
+        document.getElementById('add-proc-modal').classList.add('hidden');
+        document.querySelector('#form-pengadaan').reset();
+        document.querySelector('#form-action-pengadaan').value = 'insert';
+        document.querySelector('#form-pengadaan-id').value = '';
+        Array.from(document.querySelector('#form-pengadaan').elements).forEach(el => el.disabled = false);
+        const btnSubmit = document.querySelector('#form-pengadaan button[type="submit"]');
+        if (btnSubmit) {
+            btnSubmit.style.display = 'block';
+            btnSubmit.innerText = 'Daftarkan Belanja Modal';
+        }
+        document.querySelector('#add-proc-modal h3').innerText = 'Rekam Log Belanja Siskeudes';
+    };
+</script>
 
 <?php 
 require_once 'footer.php'; 

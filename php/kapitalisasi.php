@@ -44,6 +44,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             
             $success_msg = "Taksiran kapitalisasi baru {$id} untuk [{$nama_barang}] direkam sebagai DRAF.";
         }
+        elseif ($action === 'edit_kapitalisasi') {
+            $id = safeInput($_POST['id']);
+            $barang_id = safeInput($_POST['barang_id']);
+            $tanggal = safeInput($_POST['tanggal']);
+            $keterangan = safeInput($_POST['keterangan']);
+            $nilai_tambah = (double) $_POST['nilai_tambah'];
+
+            $stmt_b = $pdo->prepare("SELECT nama_barang, nilai FROM assets WHERE id = ?");
+            $stmt_b->execute([$barang_id]);
+            $b_row = $stmt_b->fetch();
+            if (!$b_row) {
+                throw new Exception("Aset target tidak ditemukan di pembukuan KIB.");
+            }
+            $nama_barang = $b_row['nama_barang'];
+            $nilai_lama = (double)$b_row['nilai'];
+            $nilai_baru = $nilai_lama + $nilai_tambah;
+
+            $stmt_upd = $pdo->prepare("UPDATE kapitalisasi SET barang_id = ?, nama_barang = ?, tanggal = ?, keterangan = ?, nilai_lama = ?, nilai_tambah = ?, nilai_baru = ? WHERE id = ?");
+            $stmt_upd->execute([$barang_id, $nama_barang, $tanggal, $keterangan, $nilai_lama, $nilai_tambah, $nilai_baru, $id]);
+            $success_msg = "Revisi kapitalisasi draf berhasil disimpan.";
+        }
         elseif ($action === 'post_kapitalisasi') {
             // Posting kapitalisasi akan mengupdate nilai aset asli di tabel assets
             $id = safeInput($_POST['id']);
@@ -232,8 +253,14 @@ $active_tab = isset($_GET['tab']) ? safeInput($_GET['tab']) : 'kapitalisasi';
                                         </span>
                                     </td>
                                     <td class="px-4 py-4 text-right">
-                                        <div class="inline-flex gap-1">
+                                        <div class="inline-flex gap-1 justify-end items-center align-middle">
+                                            <button onclick="viewKapitalisasi(<?php echo htmlspecialchars(json_encode($row)); ?>)" class="bg-white border border-indigo-100 hover:bg-indigo-50 text-indigo-600 rounded p-1 shadow-xxs transition cursor-pointer" title="View Detail">
+                                                <i data-lucide="eye" class="h-3.5 w-3.5"></i>
+                                            </button>
                                             <?php if ($row['status'] === 'Draf'): ?>
+                                                <button onclick="editKapitalisasi(<?php echo htmlspecialchars(json_encode($row)); ?>)" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded p-1 shadow-xxs transition cursor-pointer" title="Edit Draf">
+                                                    <i data-lucide="edit" class="h-3.5 w-3.5"></i>
+                                                </button>
                                                 <button onclick="confirmPostKapitalisasi('<?php echo $row['id']; ?>', '<?php echo htmlspecialchars($row['nama_barang']); ?>')" class="bg-slate-900 hover:bg-slate-800 text-white font-extrabold px-2.5 py-1 text-[10px] rounded uppercase tracking-wider shadow-xxs transition cursor-pointer flex items-center gap-1">
                                                     <i data-lucide="upload" class="h-3 w-3"></i> POSTING LEDGER
                                                 </button>
@@ -241,7 +268,7 @@ $active_tab = isset($_GET['tab']) ? safeInput($_GET['tab']) : 'kapitalisasi';
                                                     <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>
                                                 </button>
                                             <?php else: ?>
-                                                <span class="text-[10px] text-slate-400 italic">Terikat di KIB</span>
+                                                <span class="text-[10px] text-slate-400 italic font-mono pt-[3px] pr-1">Terikat KIB</span>
                                             <?php endif; ?>
                                         </div>
                                     </td>
@@ -498,6 +525,56 @@ $active_tab = isset($_GET['tab']) ? safeInput($_GET['tab']) : 'kapitalisasi';
 </form>
 
 <script>
+    function editKapitalisasi(data) {
+        const form = document.getElementById('modal-add-kapitalisasi').querySelector('form');
+        form.querySelector('input[name="action"]').value = 'edit_kapitalisasi';
+        
+        let idField = form.querySelector('input[name="id"]');
+        if (!idField) {
+            idField = document.createElement('input');
+            idField.type = 'hidden';
+            idField.name = 'id';
+            form.appendChild(idField);
+        }
+        idField.value = data.id;
+
+        form.querySelector('[name="barang_id"]').value = data.barang_id || '';
+        form.querySelector('[name="tanggal"]').value = data.tanggal || '';
+        form.querySelector('[name="nilai_tambah"]').value = data.nilai_tambah || '';
+        form.querySelector('[name="keterangan"]').value = data.keterangan || '';
+        
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        if (btnSubmit) btnSubmit.innerText = 'Simpan Pembaruan';
+        
+        Array.from(form.elements).forEach(el => el.disabled = false);
+        document.getElementById('modal-add-kapitalisasi').classList.remove('hidden');
+    }
+
+    function viewKapitalisasi(data) {
+        editKapitalisasi(data);
+        const form = document.getElementById('modal-add-kapitalisasi').querySelector('form');
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        if (btnSubmit) btnSubmit.style.display = 'none';
+        
+        Array.from(form.elements).forEach(el => {
+            if(el.tagName !== 'BUTTON') {
+                el.disabled = true;
+            }
+        });
+
+        // Reset
+        const closeBtn = document.querySelector('#modal-add-kapitalisasi button[onclick*="hidden"]');
+        closeBtn.addEventListener('click', function handler() {
+            Array.from(form.elements).forEach(el => el.disabled = false);
+            if (btnSubmit) {
+                btnSubmit.style.display = 'block';
+                btnSubmit.innerText = 'Rekam Konsep Draf';
+            }
+            form.querySelector('input[name="action"]').value = 'add_kapitalisasi';
+            closeBtn.removeEventListener('click', handler);
+        });
+    }
+
     function confirmPostKapitalisasi(id, name) {
         if (confirm("Posting kapitalisasi "+id+" untuk aset ["+name+"]? Hal ini akan secara otomatis memperbarui nilai total buku rincian aset tersebut di register KIB utama desa.")) {
             document.getElementById('post-kapitalisasi-id').value = id;

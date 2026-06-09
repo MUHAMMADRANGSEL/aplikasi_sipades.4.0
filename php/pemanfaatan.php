@@ -260,6 +260,9 @@ $active_tab = isset($_GET['tab']) ? safeInput($_GET['tab']) : 'penggunaan';
                                     </td>
                                     <td class="px-4 py-4 text-right">
                                         <div class="inline-flex gap-1.5">
+                                            <button onclick="viewPenggunaan(<?php echo htmlspecialchars(json_encode($row)); ?>)" class="bg-white border border-indigo-100 hover:bg-indigo-50 text-indigo-600 rounded p-1.5 shadow-xxs transition cursor-pointer">
+                                                <i data-lucide="eye" class="h-3.5 w-3.5"></i>
+                                            </button>
                                             <button onclick="editPenggunaan(<?php echo htmlspecialchars(json_encode($row)); ?>)" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-755 rounded p-1.5 shadow-xxs transition cursor-pointer">
                                                 <i data-lucide="edit" class="h-3.5 w-3.5"></i>
                                             </button>
@@ -329,6 +332,9 @@ $active_tab = isset($_GET['tab']) ? safeInput($_GET['tab']) : 'penggunaan';
                                     </td>
                                     <td class="px-4 py-4 text-right">
                                         <div class="inline-flex gap-1.5">
+                                            <button onclick="viewPemanfaatan(<?php echo htmlspecialchars(json_encode($row)); ?>)" class="bg-white border border-indigo-100 hover:bg-indigo-50 text-indigo-600 rounded p-1.5 shadow-xxs transition cursor-pointer">
+                                                <i data-lucide="eye" class="h-3.5 w-3.5"></i>
+                                            </button>
                                             <button onclick="editPemanfaatan(<?php echo htmlspecialchars(json_encode($row)); ?>)" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-755 rounded p-1.5 shadow-xxs transition cursor-pointer">
                                                 <i data-lucide="edit" class="h-3.5 w-3.5"></i>
                                             </button>
@@ -544,6 +550,44 @@ $active_tab = isset($_GET['tab']) ? safeInput($_GET['tab']) : 'penggunaan';
         document.getElementById('penggunaan-status').value = data.status;
         document.getElementById('penggunaan-modal-title').textContent = 'REVISI PENETAPAN PENGGUNAAN SK';
         document.getElementById('modal-penggunaan').classList.remove('hidden');
+    }
+
+    function viewPenggunaan(data) {
+        editPenggunaan(data);
+        document.getElementById('penggunaan-modal-title').textContent = 'VIEW DETAIL PENETAPAN PENGGUNAAN SK';
+        const form = document.getElementById('modal-penggunaan').querySelector('form');
+        Array.from(form.elements).forEach(el => {
+            if(el.tagName !== 'BUTTON') el.disabled = true;
+        });
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        if (btnSubmit) btnSubmit.style.display = 'none';
+        
+        // Ensure reset on close
+        const closeBtn = document.querySelector('#modal-penggunaan button[onclick="closeFormModal(\'penggunaan\')"]');
+        closeBtn.addEventListener('click', function handler() {
+            Array.from(form.elements).forEach(el => el.disabled = false);
+            if (btnSubmit) btnSubmit.style.display = 'block';
+            closeBtn.removeEventListener('click', handler);
+        });
+    }
+
+    function viewPemanfaatan(data) {
+        editPemanfaatan(data);
+        document.getElementById('pemanfaatan-modal-title').textContent = 'VIEW RIWAYAT KONTRAK SEWA / KSP';
+        const form = document.getElementById('modal-pemanfaatan').querySelector('form');
+        Array.from(form.elements).forEach(el => {
+            if(el.tagName !== 'BUTTON') el.disabled = true;
+        });
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        if (btnSubmit) btnSubmit.style.display = 'none';
+
+        // Ensure reset on close
+        const closeBtn = document.querySelector('#modal-pemanfaatan button[onclick="closeFormModal(\'pemanfaatan\')"]');
+        closeBtn.addEventListener('click', function handler() {
+            Array.from(form.elements).forEach(el => el.disabled = false);
+            if (btnSubmit) btnSubmit.style.display = 'block';
+            closeBtn.removeEventListener('click', handler);
+        });
     }
 
     function confirmDelUsage(id) {

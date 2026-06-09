@@ -77,6 +77,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             $success_msg = "Klasifikasi kustom berhasil dicabut dari referensi.";
         }
+        elseif ($action === 'import') {
+            if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+                throw new Exception("File CSV tidak valid atau belum dipilih.");
+            }
+
+            $csvMimes = ['text/csv', 'application/csv', 'application/vnd.ms-excel', 'text/plain'];
+            // Validasi file
+            $fileHandle = fopen($_FILES['csv_file']['tmp_name'], 'r');
+            if (!$fileHandle) {
+                throw new Exception("Gagal membaca file CSV.");
+            }
+
+            // check headers or skip
+            $first_row = fgetcsv($fileHandle, 1000, ",");
+            if (isset($first_row[0]) && strtolower(trim($first_row[0])) == 'kode') {
+                // Header row skipped
+            } else {
+                fseek($fileHandle, 0); // Reset pointer jika bukan header
+            }
+
+            $imported_count = 0;
+            $pdo->beginTransaction();
+            
+            $stmt_insert = $pdo->prepare("INSERT INTO ref_kode_barang (id, kode, nama, kategori, keterangan, is_custom) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt_check = $pdo->prepare("SELECT id FROM ref_kode_barang WHERE kode = ?");
+
+            while (($data = fgetcsv($fileHandle, 1000, ",")) !== FALSE) {
+                if (count($data) < 3) continue; // Skip baris kurang kolom (kode, nama, kategori)
+                
+                $kode = trim($data[0]);
+                $nama = trim($data[1]);
+                $kategori = trim($data[2]);
+                $keterangan = isset($data[3]) ? trim($data[3]) : '';
+                
+                if(empty($kode) || empty($nama) || empty($kategori)) continue;
+
+                $stmt_check->execute([$kode]);
+                if (!$stmt_check->fetch()) {
+                    $id = "KB-CUST-IMP" . rand(100, 999) . $imported_count;
+                    $stmt_insert->execute([$id, $kode, $nama, $kategori, $keterangan, 1]);
+                    $imported_count++;
+                }
+            }
+            fclose($fileHandle);
+            $pdo->commit();
+            $success_msg = "Berhasil mengimpor {$imported_count} kode klasifikasi kustom dari file CSV.";
+        }
     } catch (Exception $e) {
         $error_msg = "Gagal memproses alur modul: " . $e->getMessage();
     }
@@ -137,12 +184,20 @@ foreach($kode_list as $row) {
                 Referensi pembukuan kode barang resmi sesuai arahan sistem akuntansi Pemkab Lombok Timur &amp; Permendagri No. 47 Tahun 2021 mengenai Penataan Aset Pemerintahan Desa.
             </p>
         </div>
-        <button
-            onclick="openEntryModal()"
-            class="rounded-lg bg-blue-900 hover:bg-blue-800 text-white font-bold py-2.5 px-4 text-xs tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:shadow"
-        >
-            <i data-lucide="plus" class="h-4.5 w-4.5"></i> TAMBAH KODE KUSTOM
-        </button>
+        <div class="flex flex-col sm:flex-row gap-2">
+            <button
+                onclick="document.getElementById('modal-import').classList.remove('hidden')"
+                class="rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-800 font-bold py-2.5 px-4 text-xs tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:shadow"
+            >
+                <i data-lucide="upload" class="h-4.5 w-4.5"></i> IMPORT CSV
+            </button>
+            <button
+                onclick="openEntryModal()"
+                class="rounded-lg bg-blue-900 hover:bg-blue-800 text-white font-bold py-2.5 px-4 text-xs tracking-wider inline-flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:shadow"
+            >
+                <i data-lucide="plus" class="h-4.5 w-4.5"></i> TAMBAH KODE KUSTOM
+            </button>
+        </div>
     </div>
 
     <!-- Quick statistics panel cards -->
@@ -298,8 +353,15 @@ foreach($kode_list as $row) {
 
                                 <!-- Actions -->
                                 <td class="px-5 py-4 text-right whitespace-nowrap">
+                                    <div class="inline-flex gap-1.5 align-middle">
+                                        <button 
+                                            onclick="viewKodeBarang(<?php echo htmlspecialchars(json_encode($row)); ?>)"
+                                            class="bg-white border border-indigo-100 text-indigo-600 hover:bg-indigo-50 rounded p-1.5 shadow-xxs cursor-pointer"
+                                            title="View Klasifikasi"
+                                        >
+                                            <i data-lucide="eye" class="h-3.5 w-3.5"></i>
+                                        </button>
                                     <?php if ($row['is_custom']): ?>
-                                        <div class="inline-flex gap-1.5">
                                             <button 
                                                 onclick="editKodeBarang(<?php echo htmlspecialchars(json_encode($row)); ?>)"
                                                 class="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded p-1.5 shadow-xxs cursor-pointer"
@@ -314,10 +376,10 @@ foreach($kode_list as $row) {
                                             >
                                                 <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>
                                             </button>
-                                        </div>
                                     <?php else: ?>
-                                        <span class="text-[10px] text-slate-400 italic">Standar Pabrikan GID</span>
+                                        <span class="text-[10px] text-slate-400 font-mono italic my-auto ml-1">Standar Pabrikan GID</span>
                                     <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -333,6 +395,41 @@ foreach($kode_list as $row) {
 </div>
 
 <!-- ==================== FORM SUBMIT DIALOG CODES ==================== -->
+<div id="modal-import" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur p-4 overflow-y-auto hidden">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 text-left my-8 animate-fade-in">
+        <form method="POST" enctype="multipart/form-data" class="space-y-4">
+            <input type="hidden" name="action" value="import">
+
+            <div class="flex justify-between items-center border-b border-slate-150 pb-3">
+                <span class="text-xs font-black text-indigo-900 uppercase flex items-center gap-1.5 font-sans">
+                    <i data-lucide="upload-cloud" class="h-4.5 w-4.5 text-indigo-600"></i> IMPORT DATA KLASIFIKASI CSV
+                </span>
+                <button type="button" onclick="document.getElementById('modal-import').classList.add('hidden')" class="text-slate-440 hover:text-slate-650 font-bold text-xs cursor-pointer">✕</button>
+            </div>
+
+            <div class="space-y-3 text-xs text-slate-800">
+                <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-[10px] leading-relaxed text-indigo-800 font-medium">
+                    Kolom CSV yang didukung wajib memiliki urutan:<br/>
+                    1. <strong>Kode Barang</strong> (Maks. 20 Karakter)<br/>
+                    2. <strong>Nama Klasifikasi</strong><br/>
+                    3. <strong>Kategori</strong> (Misal: KIB A, KIB B)<br/>
+                    4. <strong>Keterangan</strong> (Opsional)
+                </div>
+
+                <div class="pt-2">
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Pilih File CSV Dataset</label>
+                    <input type="file" name="csv_file" accept=".csv" required class="block w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:uppercase file:tracking-wider file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 transition-all cursor-pointer border border-slate-300 rounded-lg bg-slate-50">
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-3 gap-2 border-t border-slate-100">
+                <button type="button" onclick="document.getElementById('modal-import').classList.add('hidden')" class="rounded-lg border border-slate-250 hover:bg-slate-50 font-bold py-2 px-4 transition text-slate-700 cursor-pointer text-xs">Batal</button>
+                <button type="submit" class="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-5 shadow-sm transition cursor-pointer text-xs">Jalankan Import</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div id="modal-kode" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur p-4 overflow-y-auto hidden">
     <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 text-left my-8 animate-fade-in">
         <form method="POST" class="space-y-4">
@@ -428,12 +525,40 @@ foreach($kode_list as $row) {
         lucide.createIcons();
     }
 
+    function viewKodeBarang(data) {
+        editKodeBarang(data);
+        document.getElementById('modal-title').innerHTML = '<i data-lucide="eye" class="h-4.5 w-4.5 text-indigo-600 inline"></i> VIEW KLASIFIKASI KODE BARANG';
+        const form = document.getElementById('modal-kode').querySelector('form');
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        if (btnSubmit) btnSubmit.style.display = 'none';
+        
+        Array.from(form.elements).forEach(el => {
+            if(el.tagName !== 'BUTTON') {
+                el.disabled = true;
+            }
+        });
+
+        // Reset state on close logic
+        const closeBtn = document.querySelector('#modal-kode button[onclick="closeEntryModal()"]');
+        closeBtn.addEventListener('click', function handler() {
+            Array.from(form.elements).forEach(el => el.disabled = false);
+            if (btnSubmit) btnSubmit.style.display = 'block';
+            closeBtn.removeEventListener('click', handler);
+        });
+    }
+
     function confirmDeleteKode(id) {
         if (confirm("Apakah anda yakin ingin mencabut sandi klasifikasi kustom ID "+id+" dari database? Tindakan ini tidak dapat dikembalikan.")) {
             document.getElementById('del-id').value = id;
             document.getElementById('form-delete').submit();
         }
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (window.location.search.includes('import=1')) {
+            document.getElementById('modal-import').classList.remove('hidden');
+        }
+    });
 </script>
 
 <?php require_once 'footer.php'; ?>

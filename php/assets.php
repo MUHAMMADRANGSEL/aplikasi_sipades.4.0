@@ -41,6 +41,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     } catch (Exception $e) {
         $error_msg = "Prosedur gagal dijalankan: " . $e->getMessage();
     }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update') {
+    try {
+        $id = safeInput($_POST['id']);
+        $kategori = safeInput($_POST['kategori']);
+        $kode_barang = safeInput($_POST['kode_barang']);
+        $nama_barang = safeInput($_POST['nama_barang']);
+        $luas = safeInput($_POST['luas']);
+        $sertifikat = safeInput($_POST['sertifikat']);
+        $merk = safeInput($_POST['merk']);
+        $tahun = safeInput($_POST['tahun']);
+        $nilai = (double) $_POST['nilai'];
+        $lokasi = safeInput($_POST['lokasi']);
+        $kondisi = safeInput($_POST['kondisi']);
+        $panjang = safeInput($_POST['panjang']);
+        $progress = safeInput($_POST['progress']);
+        $keterangan = safeInput($_POST['keterangan']);
+        $foto = safeInput($_POST['foto']) ?: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400';
+        $latitude = (isset($_POST['latitude']) && $_POST['latitude'] !== '') ? (double) $_POST['latitude'] : null;
+        $longitude = (isset($_POST['longitude']) && $_POST['longitude'] !== '') ? (double) $_POST['longitude'] : null;
+
+        if (empty($id) || empty($kategori) || empty($kode_barang) || empty($nama_barang) || empty($tahun) || empty($lokasi)) {
+            $error_msg = "Isian penting wajib diisi.";
+        } else {
+            $stmt = $pdo->prepare("UPDATE assets SET kategori=?, kode_barang=?, nama_barang=?, luas=?, sertifikat=?, merk=?, tahun=?, nilai=?, lokasi=?, kondisi=?, panjang=?, progress=?, keterangan=?, foto=?, latitude=?, longitude=? WHERE id=?");
+            $stmt->execute([$kategori, $kode_barang, $nama_barang, $luas, $sertifikat, $merk, $tahun, $nilai, $lokasi, $kondisi, $panjang, $progress, $keterangan, $foto, $latitude, $longitude, $id]);
+            $success_msg = "Data aset {$id} berhasil diperbarui!";
+        }
+    } catch (Exception $e) {
+        $error_msg = "Prosedur gagal dijalankan: " . $e->getMessage();
+    }
 }
 
 // 2. PROSEDUR DELETE ASET
@@ -243,38 +273,39 @@ $assets_list = $stmt_assets->fetchAll();
                         </div>
 
                         <!-- Card Action Buttons -->
-                        <div class="grid grid-cols-3 gap-2 pt-1 border-t border-slate-50">
-                            <!-- QR code modal key -->
-                            <button onclick="openQRModal('<?php echo htmlspecialchars($asset['id']); ?>', '<?php echo htmlspecialchars($asset['nama_barang']); ?>', '<?php echo htmlspecialchars($asset['kode_barang']); ?>')" 
-                                    class="rounded bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 text-[10px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer transition">
-                                <i data-lucide="qr-code" class="h-3.5 w-3.5"></i> QR Code
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 pt-1 border-t border-slate-50">
+                            <!-- View Detail -->
+                            <button onclick="viewAsset(<?php echo htmlspecialchars(json_encode($asset)); ?>)" 
+                                    class="rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 py-1.5 text-[10px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer transition">
+                                <i data-lucide="eye" class="h-3.5 w-3.5"></i> View
                             </button>
-                            
-                            <!-- GPS details location -->
-                            <?php if ($asset['latitude'] && $asset['longitude']): ?>
-                                <a href="https://www.google.com/maps/search/?api=1&query=<?php echo $asset['latitude']; ?>,<?php echo $asset['longitude']; ?>" 
-                                   target="_blank" rel="noreferrer"
-                                   class="rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 text-[10px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer transition">
-                                    <i data-lucide="map-pin" class="h-3.5 w-3.5"></i> Maps GIS
-                                </a>
-                            <?php else: ?>
-                                <button disabled class="rounded bg-slate-50 text-slate-300 py-1.5 text-[10px] font-semibold inline-flex items-center justify-center gap-1 cursor-not-allowed">
-                                    <i data-lucide="map-pin-off" class="h-3.5 w-3.5"></i> No GIS
-                                </button>
-                            <?php endif; ?>
 
-                            <!-- Delete key (hanya Administrator) -->
                             <?php if ($_SESSION['user_role'] === 'Administrator' || $_SESSION['user_role'] === 'Operator Desa'): ?>
+                                <!-- Edit Detail -->
+                                <button onclick="editAsset(<?php echo htmlspecialchars(json_encode($asset)); ?>)" 
+                                        class="rounded bg-sky-50 hover:bg-sky-100 text-sky-700 py-1.5 text-[10px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer transition">
+                                    <i data-lucide="edit-3" class="h-3.5 w-3.5"></i> Edit
+                                </button>
+                                
                                 <a href="assets.php?delete=<?php echo htmlspecialchars($asset['id']); ?>" 
                                    onclick="return confirm('Apakah Anda yakin ingin menghapus data aset ini secara permanen dari Buku Inventaris?')"
                                    class="rounded bg-rose-50 hover:bg-rose-100 text-rose-600 py-1.5 text-[10px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer transition">
                                     <i data-lucide="trash-2" class="h-3.5 w-3.5"></i> Hapus
                                 </a>
                             <?php else: ?>
-                                <button disabled class="rounded bg-slate-55 text-slate-300 py-1.5 text-[10px] font-semibold inline-flex items-center justify-center gap-1 cursor-not-allowed">
-                                    <i data-lucide="lock" class="h-3.5 w-3.5"></i> Terkunci
+                                <button disabled class="rounded bg-slate-50 text-slate-300 py-1.5 text-[10px] font-semibold inline-flex items-center justify-center gap-1 cursor-not-allowed">
+                                    <i data-lucide="lock" class="h-3.5 w-3.5"></i> Edit
+                                </button>
+                                <button disabled class="rounded bg-slate-50 text-slate-300 py-1.5 text-[10px] font-semibold inline-flex items-center justify-center gap-1 cursor-not-allowed">
+                                    <i data-lucide="lock" class="h-3.5 w-3.5"></i> Del
                                 </button>
                             <?php endif; ?>
+
+                            <!-- QR code modal key -->
+                            <button onclick="openQRModal('<?php echo htmlspecialchars($asset['id']); ?>', '<?php echo htmlspecialchars($asset['nama_barang']); ?>', '<?php echo htmlspecialchars($asset['kode_barang']); ?>')" 
+                                    class="rounded bg-slate-100 hover:bg-slate-200 text-slate-700 py-1.5 text-[10px] font-bold inline-flex items-center justify-center gap-1 cursor-pointer transition">
+                                <i data-lucide="qr-code" class="h-3.5 w-3.5"></i> QR code
+                            </button>
                         </div>
                     </div>
 
@@ -293,8 +324,9 @@ $assets_list = $stmt_assets->fetchAll();
                 </button>
             </div>
 
-            <form action="" method="POST" class="space-y-4 text-xs">
-                <input type="hidden" name="action" value="insert">
+            <form action="" method="POST" id="form-asset" class="space-y-4 text-xs">
+                <input type="hidden" name="action" id="form-action-asset" value="insert">
+                <input type="hidden" name="id" id="form-asset-id" value="">
 
                 <div class="grid grid-cols-2 gap-3">
                     <div class="space-y-1">
@@ -481,6 +513,75 @@ $assets_list = $stmt_assets->fetchAll();
         
         document.getElementById('qr-modal').classList.remove('hidden');
     }
+
+    function editAsset(asset) {
+        const form = document.querySelector('#form-asset');
+        document.querySelector('#form-action-asset').value = 'update';
+        document.querySelector('#form-asset-id').value = asset.id;
+        
+        form.querySelector('[name="kategori"]').value = asset.kategori || '';
+        form.querySelector('[name="kode_barang"]').value = asset.kode_barang || '';
+        form.querySelector('[name="nama_barang"]').value = asset.nama_barang || '';
+        form.querySelector('[name="tahun"]').value = asset.tahun || '';
+        form.querySelector('[name="nilai"]').value = asset.nilai || 0;
+        form.querySelector('[name="kondisi"]').value = asset.kondisi || '';
+        form.querySelector('[name="merk"]').value = asset.merk || '';
+        form.querySelector('[name="luas"]').value = asset.luas || '';
+        form.querySelector('[name="panjang"]').value = asset.panjang || '';
+        form.querySelector('[name="sertifikat"]').value = asset.sertifikat || '';
+        form.querySelector('[name="progress"]').value = asset.progress || '';
+        form.querySelector('[name="lokasi"]').value = asset.lokasi || '';
+        form.querySelector('[name="latitude"]').value = asset.latitude || '';
+        form.querySelector('[name="longitude"]').value = asset.longitude || '';
+        form.querySelector('[name="keterangan"]').value = asset.keterangan || '';
+        form.querySelector('[name="foto"]').value = asset.foto || '';
+
+        // Reset submit button text
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        if (btnSubmit) btnSubmit.innerText = 'Perbarui Data Aset';
+        
+        // Change Title
+        document.querySelector('#add-asset-modal h3').innerText = 'Form Perbaikan Data Aset';
+        
+        // Un-disable all fields in case it was disabled by view mode
+        Array.from(form.elements).forEach(el => el.disabled = false);
+
+        document.getElementById('add-asset-modal').classList.remove('hidden');
+    }
+
+    function viewAsset(asset) {
+        editAsset(asset); // Populate fields exactly like edit
+        
+        // Change Modal properties for purely viewing
+        document.querySelector('#add-asset-modal h3').innerText = 'Rincian Lengkap Data Aset';
+        
+        const form = document.querySelector('#form-asset');
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        if (btnSubmit) btnSubmit.style.display = 'none'; // Hide submit button for viewing
+        
+        // Make all read only
+        Array.from(form.elements).forEach(el => {
+            if(el.tagName !== 'BUTTON') {
+                el.disabled = true;
+            }
+        });
+    }
+
+    // Must handle modal reset on close since we disable fields in view mode
+    const origCloseAsset = document.querySelector('#add-asset-modal button[onclick*="add-asset-modal"]').getAttribute('onclick');
+    document.querySelector('#add-asset-modal button[onclick*="add-asset-modal"]').onclick = function() {
+        document.getElementById('add-asset-modal').classList.add('hidden');
+        document.querySelector('#form-asset').reset();
+        document.querySelector('#form-action-asset').value = 'insert';
+        document.querySelector('#form-asset-id').value = '';
+        Array.from(document.querySelector('#form-asset').elements).forEach(el => el.disabled = false);
+        const btnSubmit = document.querySelector('#form-asset button[type="submit"]');
+        if (btnSubmit) {
+            btnSubmit.style.display = 'block';
+            btnSubmit.innerText = 'Simpan ke KIB DPD';
+        }
+        document.querySelector('#add-asset-modal h3').innerText = 'Form Registrasi Aset Baru Rarang Selatan';
+    };
 </script>
 
 <?php 

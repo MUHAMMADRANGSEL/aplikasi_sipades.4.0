@@ -14,6 +14,7 @@ app.use(express.json({ limit: "10mb" }));
 
 // In-Memory Database store file (JSON format)
 const DB_FILE = path.join(process.cwd(), "database.json");
+const SQL_SEED_FILE = path.join(process.cwd(), "database.sql");
 
 // Import default seed lists directly from Typescript representation to avoid empty starts
 import {
@@ -507,7 +508,8 @@ async function setupVite() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server SIPADES SMART running on port ${PORT}`);
+    console.log(`Server SIPADES SMART running on http://0.0.0.0:${PORT}`);
+    console.log(`Production Mode: ${process.env.NODE_ENV === "production" ? "YES" : "NO"}`);
   });
 }
 

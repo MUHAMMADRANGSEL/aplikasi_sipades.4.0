@@ -34,14 +34,28 @@ $logo_desa = ($profil_desa && !empty($profil_desa['logo'])) ? $profil_desa['logo
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class'
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            '150': '#eceef2',
+                            '250': '#e2e8f0',
+                            '440': '#94a2b8',
+                            '550': '#5e7291',
+                            '650': '#3d4b61',
+                            '905': '#0f172a',
+                        }
+                    }
+                }
+            }
         }
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- Lucide Icons via CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* SAFE-BOOT LAYOUT FALLBACK (Protects visual integrity if Tailwind CDN fails) */
+        /* CRITICAL LAYOUT FALLBACKS (Protects visual integrity if Tailwind CDN fails) */
         .flex { display: flex !important; }
         .flex-col { flex-direction: column !important; }
         .hidden { display: none !important; }
@@ -52,14 +66,29 @@ $logo_desa = ($profil_desa && !empty($profil_desa['logo'])) ? $profil_desa['logo
         .items-center { align-items: center !important; }
         .justify-center { justify-content: center !important; }
         
-        /* Ensure modals show up when not hidden */
+        /* Ensure modals show up when not hidden classes should be handled by Tailwind but we ensure it here */
         [id^="modal-"]:not(.hidden) { display: flex !important; }
-        
+
         @media (min-width: 768px) {
             .md\:flex { display: flex !important; }
             .md\:flex-row { flex-direction: row !important; }
             .md\:w-64 { width: 256px !important; }
             .md\:hidden { display: none !important; }
+        }
+        
+        /* PRINT OPTIMIZATION */
+        @media print {
+            body * { visibility: hidden !important; }
+            #printable-qr-frame, #printable-qr-frame * { visibility: visible !important; }
+            #printable-qr-frame { 
+                position: fixed !important; 
+                left: 0 !important; 
+                top: 0 !important; 
+                border: 2px solid #000 !important;
+                margin: 0 !important;
+                padding: 10px !important;
+                width: 250px !important;
+            }
         }
         
         body { font-family: 'Inter', sans-serif; transition: background-color 0.3s ease, color 0.3s ease; }
@@ -99,7 +128,7 @@ $logo_desa = ($profil_desa && !empty($profil_desa['logo'])) ? $profil_desa['logo
         html.dark .border { border-color: #334155 !important; }
     </style>
 </head>
-<body class="bg-[#f8fafc] text-slate-800 min-h-screen flex flex-col md:flex-row antialiased">
+<body class="bg-[#f8fafc] text-slate-800 min-h-screen flex flex-col md:flex-row antialiased w-full overflow-x-hidden">
 
     <!-- Responsive Mobile Header -->
     <div class="md:hidden w-full bg-slate-900 border-b border-slate-800 p-4 flex items-center justify-between text-white shrink-0">
@@ -215,11 +244,10 @@ $logo_desa = ($profil_desa && !empty($profil_desa['logo'])) ? $profil_desa['logo
         </div>
     </aside>
 
-    <!-- MAIN BODY RIGHT STAGE CONTAINER -->
-    <main class="flex-1 flex flex-col min-w-0 min-h-screen">
+    <main class="flex-1 flex flex-col min-w-0 min-h-screen w-full">
         
         <!-- Header Top Navigation bar -->
-        <header class="hidden md:flex bg-white h-16 border-b border-slate-100 px-6 items-center justify-between text-left shrink-0">
+        <header class="hidden md:flex bg-white h-16 border-b border-slate-100 px-6 items-center justify-between text-left shrink-0 w-full">
             <div class="flex items-center gap-2">
                 <span class="text-xs font-extrabold text-slate-800 uppercase tracking-wide flex items-center gap-1">
                     <i data-lucide="folder-key" class="h-4.5 w-4.5 text-emerald-600"></i> Kantor Desa Rarang Selatan

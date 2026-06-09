@@ -45,7 +45,7 @@ $recent_audits = $pdo->query("SELECT * FROM audit ORDER BY tanggal DESC LIMIT 4"
 $pending_procurements = $pdo->query("SELECT * FROM pengadaan WHERE status = 'Draf' ORDER BY tanggal DESC LIMIT 4")->fetchAll();
 ?>
 
-<div class="space-y-6 text-left">
+<div class="space-y-6 text-left w-full">
     
     <!-- Top banner info Rarang Selatan -->
     <div class="bg-gradient-to-r from-slate-900 to-slate-800 rounded-2xl p-6 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-lg">

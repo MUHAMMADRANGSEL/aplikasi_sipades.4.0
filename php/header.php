@@ -94,11 +94,11 @@ $logo_desa = ($profil_desa && !empty($profil_desa['logo'])) ? $profil_desa['logo
                 <i data-lucide="database" class="h-4 w-4"></i> Inventaris KIB
             </a>
 
-            <a href="#" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition text-blue-200 hover:bg-white/5 hover:text-white">
+            <a href="pemanfaatan.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='pemanfaatan.php') ? 'bg-white/10 text-white border-l-4 border-teal-400 font-extrabold shadow-sm' : 'text-blue-200 hover:bg-white/5 hover:text-white'; ?>">
                 <i data-lucide="file-check" class="h-4 w-4"></i> Hak Guna & Leases
             </a>
 
-            <a href="#" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition text-blue-200 hover:bg-white/5 hover:text-white">
+            <a href="kapitalisasi.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='kapitalisasi.php') ? 'bg-white/10 text-white border-l-4 border-teal-400 font-extrabold shadow-sm' : 'text-blue-200 hover:bg-white/5 hover:text-white'; ?>">
                 <i data-lucide="trending-down" class="h-4 w-4"></i> Kapitalisasi
             </a>
 
@@ -106,11 +106,11 @@ $logo_desa = ($profil_desa && !empty($profil_desa['logo'])) ? $profil_desa['logo
                 <i data-lucide="warehouse" class="h-4 w-4"></i> Persediaan Desa
             </a>
 
-            <a href="#" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition text-blue-200 hover:bg-white/5 hover:text-white">
+            <a href="ref_kode_barang.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='ref_kode_barang.php') ? 'bg-white/10 text-white border-l-4 border-teal-400 font-extrabold shadow-sm' : 'text-blue-200 hover:bg-white/5 hover:text-white'; ?>">
                 <i data-lucide="book-open" class="h-4 w-4"></i> Ref Kode Barang
             </a>
 
-            <a href="#" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition text-blue-200 hover:bg-white/5 hover:text-white">
+            <a href="gis.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='gis.php') ? 'bg-white/10 text-white border-l-4 border-teal-400 font-extrabold shadow-sm' : 'text-blue-200 hover:bg-white/5 hover:text-white'; ?>">
                 <i data-lucide="map-pin" class="h-4 w-4"></i> Peta GIS Aset
             </a>
 
@@ -118,11 +118,11 @@ $logo_desa = ($profil_desa && !empty($profil_desa['logo'])) ? $profil_desa['logo
                 <i data-lucide="compass" class="h-4 w-4"></i> Fisik Scan / Audit
             </a>
 
-            <a href="#" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition text-blue-200 hover:bg-white/5 hover:text-white">
+            <a href="reports.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='reports.php') ? 'bg-white/10 text-white border-l-4 border-teal-400 font-extrabold shadow-sm' : 'text-blue-200 hover:bg-white/5 hover:text-white'; ?>">
                 <i data-lucide="printer" class="h-4 w-4"></i> Pencetakan
             </a>
 
-            <a href="#" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition text-blue-200 hover:bg-white/5 hover:text-white">
+            <a href="premium.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide transition <?php echo ($current_page==='premium.php') ? 'bg-white/10 text-white border-l-4 border-teal-400 font-extrabold shadow-sm' : 'text-blue-200 hover:bg-white/5 hover:text-white'; ?>">
                 <i data-lucide="sparkles" class="h-4 w-4"></i> Revaluasi AI
             </a>
         </nav>
